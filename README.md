@@ -1,14 +1,61 @@
-# NetOps Agent Swarm
+## NetOps Agent Swarm
 
-A production-pattern multi-agent orchestration demo for network incident response, built with the Anthropic Claude API. Demonstrates core agentic infrastructure concepts: central orchestration, specialized agents, shared context store, tool schemas, and guardrailed handoffs.
+**An autonomous network operations system powered by coordinated AI agents.**
 
----
+This project demonstrates how real-world network incidents can be:
+- detected,
+- diagnosed, and
+- remediated
 
-## What this is
+**without human intervention**, using a swarm of specialized agents coordinated by a central orchestrator.
 
-Most AI demos show a single model answering a question. This demo shows something harder: **multiple specialized agents coordinating autonomously to resolve a network incident**, with a central orchestrator managing state, routing, and shared context across the swarm.
+Instead of static alerts and manual runbooks, this system executes **end-to-end incident response workflows automatically**.
 
-This pattern maps directly to the infrastructure challenges in production agentic systems — the same problems solved by platforms like AWS Agent Core, LangGraph, and Domotz's MCP-based agentic runtime.
+> Think: SRE incident response, executed by software.
+
+> ## Live Incident Walkthrough
+
+**Scenario:** Core switch experiencing high packet loss
+
+[Monitor Agent]
+→ detects packet loss >10%
+→ flags P1 incident
+
+[Orchestrator]
+→ routes to Diagnostic Agent
+
+[Diagnostic Agent]
+→ analyzes topology + recent config changes
+→ identifies root cause: interface saturation after config push
+→ submits diagnosis (confidence: 92%)
+
+[Orchestrator]
+→ validates diagnosis present
+→ routes to Response Agent
+
+[Response Agent]
+→ applies remediation: rollback config
+→ verifies recovery
+→ generates incident report
+
+**Outcome:** Incident resolved automatically in seconds, without human intervention.
+
+## Design Principles
+
+**1. Orchestration > agent-to-agent calls**  
+Direct agent chaining creates brittle, unobservable systems.  
+All coordination must flow through a central control plane.
+
+**2. Shared state is mandatory**  
+Stateless agents cannot support multi-step reasoning workflows.  
+Context persistence enables auditability and guardrails.
+
+**3. Actions must be gated by validated reasoning**  
+No remediation without diagnosis.  
+This prevents unsafe automation.
+
+**4. Deterministic fallbacks are required**  
+LLMs are non-deterministic. Production systems cannot be.
 
 ---
 
@@ -94,17 +141,16 @@ Each agent call includes structured fallback logic. If the LLM returns malformed
 
 ---
 
-## Real-world grounding
+## Real-World Relevance
 
-This demo is built on patterns from production agentic infrastructure work at [Domotz](https://www.domotz.com), a network monitoring and AIOps SaaS platform (PE/Bessemer-backed). The MCP-based agentic runtime designed for Domotz solves the same core problems this demo illustrates:
+This system reflects production patterns used in modern observability and AIOps platforms.
 
-- Tool schema design for network ops agents
-- Orchestration of multi-step diagnostic workflows
-- Shared memory and context passing between agent stages
-- Guardrails preventing remediation without confirmed diagnosis
-- Human-in-the-loop escalation for P1 incidents
+The same architectural concepts apply to:
+- Datadog / New Relic style alerting pipelines
+- AWS Agent Core and LangGraph orchestration models
+- MCP-based agent runtimes for infrastructure automation
 
-The patterns here map directly to what AWS Agent Core, LangGraph, CrewAI, and similar platforms provide as managed infrastructure.
+This is not a theoretical pattern — it is how autonomous systems will be built.
 
 ---
 
@@ -115,7 +161,7 @@ The patterns here map directly to what AWS Agent Core, LangGraph, CrewAI, and si
 | Agent runtime | Anthropic Claude API (`claude-sonnet-4-6`) |
 | Orchestration | Custom central router (JavaScript) |
 | UI | React |
-| Tool execution | Simulated (swappable for real Domotz API) |
+| Tool execution | Simulated (swappable for real observability APIs) |
 | Context store | In-memory shared state (swappable for Redis/DynamoDB) |
 
 ---
@@ -145,7 +191,7 @@ The demo runs entirely in the browser. No backend required. Swap the simulated t
 
 | Extension | Description |
 |-----------|-------------|
-| Real device data | Replace simulated tools with Domotz REST API calls |
+| Real device data | Replace simulated tools with REST API calls |
 | Persistent context | Swap in-memory store for Redis or DynamoDB |
 | Agent eval harness | Add a test suite that runs agents against known incident scenarios and scores output quality |
 | Additional agents | Add a Capacity Planning agent or a Change Management agent to the swarm |
@@ -154,8 +200,18 @@ The demo runs entirely in the browser. No backend required. Swap the simulated t
 
 ---
 
-## About
+## Why this matters
 
-Built as a portfolio demonstration of agentic infrastructure thinking for senior product and engineering roles focused on AI platform development.
+Autonomous infrastructure is the next evolution of observability.
 
-The architecture reflects patterns applicable to any production multi-agent system: advertising campaign optimization agents, customer service automation, code review pipelines, or infrastructure ops.
+This project explores how:
+- alerting becomes decision-making
+- runbooks become executable systems
+- operators move from responders → supervisors
+
+- ## Example Output
+
+[Monitor] P1 incident detected: packet loss 12%
+[Diagnostic] Root cause: interface saturation
+[Response] Action: config rollback applied
+[System] Status: recovered
