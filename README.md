@@ -209,9 +209,3 @@ This project explores how:
 - runbooks become executable systems
 - operators move from responders → supervisors
 
-- ## Example Output
-
-[Monitor] P1 incident detected: packet loss 12%
-[Diagnostic] Root cause: interface saturation
-[Response] Action: config rollback applied
-[System] Status: recovered
