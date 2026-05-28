@@ -85,37 +85,37 @@ const GPU_SCENARIOS = {
     costLabel:"Est. savings vs. running degraded",  costSaved:3200,
     additionalCostLabel:null,                        additionalCost:null,
     metrics:[
-      {l:"GPU Temp",  k:"gpuTemp",   v:87,   hv:71,  u:"°C",       max:100},
-      {l:"Throughput",k:"throughput",v:82,   hv:100, u:"%",         max:100},
+      {l:"GPU Temp",   k:"gpuTemp",   v:87,  hv:71,  u:"°C",       max:100},
+      {l:"Throughput", k:"throughput",v:82,  hv:100, u:"%",         max:100},
       {l:"Clock Speed",k:"clockSpeed",v:79,  hv:100, u:"% nominal", max:100},
-      {l:"Power Draw",k:"powerDraw", v:94,   hv:76,  u:"% TDP",     max:100},
-      {l:"Throttled", k:"affected",  v:2,    hv:0,   u:"nodes",     max:16},
+      {l:"Power Draw", k:"powerDraw", v:94,  hv:76,  u:"% TDP",     max:100},
+      {l:"Throttled",  k:"affected",  v:2,   hv:0,   u:"nodes",     max:16},
     ],
+    // sim mirrors ACTIVE_INCIDENT.sim exactly: monReasoning, diagReasoning, respReasoning, autoAct
+    // plus GPU-specific tool-call arrays and conclusion strings (monTools/diagTools/respTools etc.)
     sim:{
       monReasoning:"GPU core temperature on nodes 3 and 7 registering 87°C — 4°C above thermal throttle threshold of 83°C. DCGM metrics confirm clock speed reduction: nodes 3/7 running at 1,230 MHz vs cluster baseline of 1,560 MHz. Compute throughput telemetry shows 18% degradation on affected nodes. Distributed training sync degraded — barrier wait time elevated 340ms above P50. Classifying P2-High: active job impact, no immediate hardware risk.",
       diagReasoning:"Thermal throttling confirmed as root cause. Nodes 3 and 7 clock governors have engaged thermal protection, reducing GPU frequency to prevent hardware damage. Thermal history shows sustained temps above 80°C for 22 minutes — cooling system underperforming. Job impact: 18% throughput reduction on 2/16 nodes cascades to global training slowdown via distributed sync barrier. Projected job extension: +2.1 hours at current trajectory. No hardware fault — thermal event only. Confidence: 94%.",
       respReasoning:"Checkpoint job at current step, isolate nodes 3 and 7 from the training pool, and resubmit on 14 healthy nodes to restore full throughput. Estimated cost impact of catching early vs. running degraded: $3,200 saved. Flag nodes 3 and 7 for proactive thermal inspection before next job assignment. Post-remediation: verify clock speeds return to baseline on healthy nodes within 3 minutes of resubmit.",
-    },
-    steps:{
-      mon:[
+      autoAct:"Job checkpointed at step 8,420. Nodes 3 & 7 quarantined. Job resubmitted on nodes 1–2, 4–6, 8–16 (14 nodes). ETA to resume: 8 minutes. Hardware inspection ticket GPU-HW-0391 created for nodes 3 & 7.",
+      monTools:[
         ["gpu_telemetry: get_cluster_status()","16-node A100 cluster · collector gpu-col-01 online · training job gpt-finetune-7b active at step 8,420."],
         ["dcgm_metrics: get_node_metrics('node-03','node-07')","Node-03: <span style='color:#F87171;font-weight:600'>87°C</span> · 1,230 MHz · throughput <span style='color:#F87171;font-weight:600'>82%</span><br>Node-07: <span style='color:#F87171;font-weight:600'>85°C</span> · 1,280 MHz · throughput <span style='color:#FBBF24;font-weight:600'>86%</span>"],
         ["gpu_telemetry: get_thermal_sensors('node-03','node-07')","<span style='color:#F87171'>NVML thermal throttle flag ACTIVE on both nodes.</span> Fan speed at 98% max. Ambient temp: 24°C."],
       ],
       monFlag:"<span style='color:#FBBF24;font-weight:700'>P2-High</span> — Thermal throttle on nodes 3 & 7. Throughput −18%. Distributed sync degraded.",
-      diag:[
+      diagTools:[
         ["dcgm_metrics: get_clock_history('node-03','node-07')","Clock stepped down at 14:01 UTC: 1,560 → 1,230 MHz. Consistent with sustained thermal event, not a transient spike."],
         ["gpu_insights: get_job_impact_analysis('gpt-finetune-7b')","Barrier wait time +340ms/step. 18% throughput loss on 2 nodes cascades to cluster-wide slowdown. Projected extension: <span style='color:#F87171;font-weight:600'>+2.1 hours</span>."],
         ["gpu_telemetry: get_thermal_history('node-03','node-07')","Sustained temp >80°C for 22 minutes. Cooling system underperforming — not a transient spike."],
       ],
       diagFlag:"<strong>Root cause:</strong> Thermal throttling. <strong>Confidence:</strong> 94%. No hardware fault. Job extension: +2.1 hours.",
-      resp:[
+      respTools:[
         ["job_manager: checkpoint_job('gpt-finetune-7b')","<span style='color:#34D399'>✓ Checkpoint saved</span> at step 8,420."],
         ["cluster_manager: isolate_nodes(['node-03','node-07'])","<span style='color:#34D399'>✓ Nodes 3 & 7 quarantined.</span> Inspection ticket GPU-HW-0391 created."],
-        ["job_manager: resubmit_job('gpt-finetune-7b', healthyNodes)","Job checkpointed at step 8,420. Nodes 3 & 7 quarantined. Job resubmitted on nodes 1–2, 4–6, 8–16 (14 nodes). ETA to resume: 8 minutes."],
       ],
-      report:"<strong>GPU-001 filed.</strong> P2-High thermal throttle on nodes 3 & 7. Job checkpointed and resubmitted on healthy pool. <span style='color:#34D399;font-weight:700'>Est. $3,200 saved</span> vs. running degraded to completion.<br><span style='color:#A78BFA;font-size:10px'>Tools: gpu_telemetry · dcgm_metrics · gpu_insights · job_manager · cluster_manager</span>",
-      heal:"<span style='color:#34D399;font-weight:700'>✓ Job healthy.</span> Training resumed on 14-node pool. Clock speeds nominal. Throughput restored to 100%.",
+      reportMsg:"<strong>GPU-001 filed.</strong> P2-High thermal throttle on nodes 3 & 7. Job checkpointed and resubmitted on healthy pool. <span style='color:#34D399;font-weight:700'>Est. $3,200 saved</span> vs. running degraded to completion.<br><span style='color:#A78BFA;font-size:10px'>Tools: gpu_telemetry · dcgm_metrics · gpu_insights · job_manager · cluster_manager</span>",
+      healMsg:"<span style='color:#34D399;font-weight:700'>✓ Job healthy.</span> Training resumed on 14-node pool. Clock speeds nominal. Throughput restored to 100%.",
     },
   },
 
@@ -128,37 +128,35 @@ const GPU_SCENARIOS = {
     costLabel:"Accrued idle GPU cost (so far)",         costSaved:2847,
     additionalCostLabel:"Additional cost if no action in 30 min", additionalCost:2240,
     metrics:[
-      {l:"GPU Util",   k:"gpuUtil",  v:8,    hv:94,  u:"%",     max:100},
-      {l:"Idle Time",  k:"idleTime", v:38,   hv:0,   u:"min",   max:60},
-      {l:"Cost Accrued",k:"cost",    v:2847, hv:2847,u:"$",     max:5000},
-      {l:"Power Draw", k:"powerDraw",v:12,   hv:88,  u:"% TDP", max:100},
-      {l:"Active Jobs",k:"jobs",     v:0,    hv:1,   u:"",      max:4},
+      {l:"GPU Util",    k:"gpuUtil",  v:8,    hv:94,  u:"%",     max:100},
+      {l:"Idle Time",   k:"idleTime", v:38,   hv:0,   u:"min",   max:60},
+      {l:"Cost Accrued",k:"cost",     v:2847, hv:2847,u:"$",     max:5000},
+      {l:"Power Draw",  k:"powerDraw",v:12,   hv:88,  u:"% TDP", max:100},
+      {l:"Active Jobs", k:"jobs",     v:0,    hv:1,   u:"",      max:4},
     ],
     sim:{
       monReasoning:"GPU utilization across all 32 nodes has been below 15% for 38 consecutive minutes. Reserved cluster billing is active — customer Meridian AI is paying for this capacity. Utilization pattern inconsistent with intentional idle: no job-submitted signal in the last 45 minutes, no data loader processes running. Cost accrued: $2,847. Classifying P1-Critical: active financial bleed with no productive workload.",
       diagReasoning:"Root cause: training job failed silently 38 minutes ago with an OOM error on node 14. No automatic restart configured. Ruling out alternatives: data loading bottleneck ruled out — loader process not running; intentional idle ruled out — no manual idle signal, no job queued. Job exit code 137 (OOM kill) logged at 09:03 UTC. All 32 GPUs idle since. Cost trajectory: $2,847 accrued, $2,240 additional if no action in 30 minutes. Confidence: 97%.",
       respReasoning:"Alert customer Meridian AI immediately with cost figure, root cause (OOM on node 14), and two action options: restart the failed job with increased memory allocation, or release the reservation if the job is no longer needed. One-click restart workflow pre-staged with fixed memory config. If no customer response in 15 minutes, escalate to account team. Every minute of inaction accrues ~$75.",
-    },
-    steps:{
-      mon:[
+      autoAct:"Customer alert sent with $2,847 cost figure and OOM root cause. One-click restart staged with increased memory limit on node 14. Account team notified. Utilization threshold adjusted to 10% for faster future detection on this cluster.",
+      monTools:[
         ["gpu_telemetry: get_cluster_status()","32-GPU reserved cluster · collector gpu-col-meridian online · customer: Meridian AI · reserved window active."],
         ["dcgm_metrics: get_utilization_history('cluster-meridian','38min')","GPU util: <span style='color:#F87171;font-weight:600'>8%</span> avg across 32 nodes · 38 consecutive minutes below 15% threshold. No utilization spikes detected."],
         ["billing_api: get_accrued_cost('cluster-meridian')","<span style='color:#F87171;font-weight:700'>$2,847 accrued</span> in idle time. Billing rate: ~$75/min. Reserved window: 4 hours remaining."],
       ],
       monFlag:"<span style='color:#F87171;font-weight:700'>P1-Critical</span> — 32 GPUs idle 38 min. $2,847 accrued. No active workload detected.",
-      diag:[
+      diagTools:[
         ["job_manager: get_last_job_status('cluster-meridian')","<span style='color:#F87171'>Exit code 137 (OOM kill)</span> on node 14 at 09:03 UTC. No restart policy configured."],
         ["job_manager: get_process_list('cluster-meridian')","No data loader process running. No job process running. GPUs at idle power state."],
         ["cluster_manager: check_idle_signal('cluster-meridian')","<span style='color:#34D399'>No manual idle signal found.</span> No job queued. Unintentional idle confirmed."],
       ],
       diagFlag:"<strong>Root cause:</strong> Silent OOM failure — no auto-restart. <strong>Confidence:</strong> 97%. Cost trajectory: +$2,240 if no action in 30 min.",
-      resp:[
+      respTools:[
         ["notification_api: alert_customer('meridian-ai')","<span style='color:#34D399'>✓ Alert sent</span> to Meridian AI: $2,847 cost figure, OOM root cause, two action options included."],
         ["job_manager: stage_restart_workflow('cluster-meridian')","<span style='color:#34D399'>✓ One-click restart staged</span> with increased memory limit on node 14."],
-        ["notification_api: notify_account_team()","Customer alert sent. Account team notified. Utilization threshold adjusted to 10% for faster future detection on this cluster."],
       ],
-      report:"<strong>GPU-002 filed.</strong> P1-Critical idle cluster. $2,847 accrued. Customer alerted. Restart workflow staged. <span style='color:#FBBF24;font-weight:700'>+$2,240 at risk if no response in 30 min.</span><br><span style='color:#A78BFA;font-size:10px'>Tools: gpu_telemetry · dcgm_metrics · billing_api · job_manager · cluster_manager · notification_api</span>",
-      heal:"<span style='color:#34D399;font-weight:700'>✓ Cluster active.</span> Meridian AI restarted job. GPU utilization 94%. Financial bleed stopped.",
+      reportMsg:"<strong>GPU-002 filed.</strong> P1-Critical idle cluster. $2,847 accrued. Customer alerted. Restart workflow staged. <span style='color:#FBBF24;font-weight:700'>+$2,240 at risk if no response in 30 min.</span><br><span style='color:#A78BFA;font-size:10px'>Tools: gpu_telemetry · dcgm_metrics · billing_api · job_manager · cluster_manager · notification_api</span>",
+      healMsg:"<span style='color:#34D399;font-weight:700'>✓ Cluster active.</span> Meridian AI restarted job. GPU utilization 94%. Financial bleed stopped.",
     },
   },
 
@@ -171,37 +169,35 @@ const GPU_SCENARIOS = {
     costLabel:"Net savings vs. continuing degraded",    costSaved:5400,
     additionalCostLabel:"Projected cost if unresolved", additionalCost:6100,
     metrics:[
-      {l:"Step Lag", k:"stepLag", v:22,   hv:0,   u:"%",       max:50},
-      {l:"Duration", k:"duration",v:47,   hv:0,   u:"min",     max:60},
-      {l:"Straggler",k:"affected",v:1,    hv:0,   u:"/64 nodes",max:64},
-      {l:"Job ETA",  k:"jobEta",  v:3.8,  hv:0.2, u:"h added", max:5},
-      {l:"Cost Risk",k:"costRisk",v:6100, hv:0,   u:"$",       max:10000},
+      {l:"Step Lag",  k:"stepLag", v:22,   hv:0,   u:"%",        max:50},
+      {l:"Duration",  k:"duration",v:47,   hv:0,   u:"min",      max:60},
+      {l:"Straggler", k:"affected",v:1,    hv:0,   u:"/64 nodes",max:64},
+      {l:"Job ETA",   k:"jobEta",  v:3.8,  hv:0.2, u:"h added",  max:5},
+      {l:"Cost Risk", k:"costRisk",v:6100, hv:0,   u:"$",        max:10000},
     ],
     sim:{
       monReasoning:"Node 12 step completion time: 1.47s vs cluster P50 of 1.20s — consistently 22% above median for 47 minutes and 340 training steps. This is not noise: coefficient of variation across 340 steps is 2.3%, indicating a persistent bottleneck rather than transient spikes. All other 63 nodes are within ±4% of P50. The entire 64-node cluster stalls at each synchronization barrier waiting for node 12. Global throughput impact: 22% job slowdown. Classifying P2-High.",
       diagReasoning:"Root cause: CPU bottleneck on node 12 starving the GPU data pipeline. CPU utilization on node 12: 98% vs cluster median 34%. I/O wait: 41% — data loader is CPU-bound and cannot pre-fetch fast enough to keep the GPU fed. GPU utilization on node 12 is 67% vs cluster median 94% — GPU is waiting for data, not the reverse. This is a CPU/data-loader bottleneck, not a GPU hardware fault. Whole-cluster impact: every step, 63 healthy nodes complete and wait at the barrier for node 12. Projected extension: +3.8 hours, estimated cost: +$6,100. Confidence: 89%.",
       respReasoning:"Checkpoint job now. Replace node 12 with a healthy node from the warm pool — estimated swap time: 12 minutes. Resume from checkpoint. Net savings vs. continuing degraded for the remaining job duration: $5,400. Alternative considered: increasing CPU allocation on node 12 — rejected, requires node restart and loses current progress. Longer-term: flag node 12 for CPU hardware inspection and adjust data-loader pinning config.",
-    },
-    steps:{
-      mon:[
+      autoAct:"Job checkpointed at step 8,921. Node 12 evicted and flagged for CPU inspection. Replacement node 47 (warm pool) provisioned and joining cluster. Estimated time to resume: 12 minutes. Hardware ticket GPU-HW-0392 created.",
+      monTools:[
         ["gpu_telemetry: get_cluster_status()","64-node H100 cluster · collector gpu-col-01 online · LLM pre-training job active · step 8,921 of ~15,000."],
         ["dcgm_metrics: get_step_timing_distribution('llm-pretrain-job')","Node-12: <span style='color:#F87171;font-weight:600'>1.47s/step</span> vs cluster P50 <span style='color:#34D399'>1.20s</span>. Lag: 22% · 340 consecutive steps · CV: 2.3% (persistent pattern)."],
         ["gpu_telemetry: get_barrier_wait_times('llm-pretrain-job')","63 nodes waiting at sync barrier each step for node 12. Barrier wait: <span style='color:#F87171;font-weight:600'>+270ms avg</span>. Global throughput: −22%."],
       ],
       monFlag:"<span style='color:#FBBF24;font-weight:700'>P2-High</span> — Node 12 straggler across 340 steps · entire 64-node cluster impacted · +3.8h projected.",
-      diag:[
+      diagTools:[
         ["dcgm_metrics: get_cpu_utilization('node-12')","Node-12 CPU: <span style='color:#F87171;font-weight:600'>98%</span> vs cluster median <span style='color:#34D399'>34%</span>. I/O wait: 41%. Data loader is CPU-bound."],
         ["dcgm_metrics: get_gpu_utilization('node-12')","Node-12 GPU: <span style='color:#FBBF24;font-weight:600'>67%</span> vs cluster median <span style='color:#34D399'>94%</span>. GPU starved for data — not a hardware fault."],
         ["gpu_insights: rule_out_gpu_fault('node-12')","<span style='color:#34D399'>GPU hardware healthy.</span> Error memory: 0. Thermal: 72°C nominal. Root cause confirmed: CPU/data-loader bottleneck."],
       ],
       diagFlag:"<strong>Root cause:</strong> CPU bottleneck starving GPU data feed. <strong>Confidence:</strong> 89%. Not a GPU fault. Cluster-wide impact: 22% slowdown.",
-      resp:[
+      respTools:[
         ["job_manager: checkpoint_job('llm-pretrain-job')","<span style='color:#34D399'>✓ Checkpoint saved</span> at step 8,921."],
         ["cluster_manager: evict_node('node-12')","<span style='color:#34D399'>✓ Node 12 evicted.</span> CPU inspection ticket GPU-HW-0392 created."],
-        ["cluster_manager: provision_replacement('node-47',warmPool=true)","Job checkpointed at step 8,921. Node 12 evicted. Replacement node 47 (warm pool) provisioned. Estimated time to resume: 12 minutes."],
       ],
-      report:"<strong>GPU-003 filed.</strong> P2-High straggler on node 12. Job checkpointed. Replacement provisioning. <span style='color:#34D399;font-weight:700'>Net savings: $5,400</span> vs. running degraded.<br><span style='color:#A78BFA;font-size:10px'>Tools: gpu_telemetry · dcgm_metrics · gpu_insights · job_manager · cluster_manager</span>",
-      heal:"<span style='color:#34D399;font-weight:700'>✓ Job resumed.</span> Node 47 joined cluster. All 64 nodes within 4% of P50. Throughput fully restored.",
+      reportMsg:"<strong>GPU-003 filed.</strong> P2-High straggler on node 12. Job checkpointed. Replacement provisioning. <span style='color:#34D399;font-weight:700'>Net savings: $5,400</span> vs. running degraded.<br><span style='color:#A78BFA;font-size:10px'>Tools: gpu_telemetry · dcgm_metrics · gpu_insights · job_manager · cluster_manager</span>",
+      healMsg:"<span style='color:#34D399;font-weight:700'>✓ Job resumed.</span> Node 47 joined cluster. All 64 nodes within 4% of P50. Throughput fully restored.",
     },
   },
 };
@@ -631,38 +627,57 @@ function GpuInsightsPanel({scenarioKey,T,theme}){
     if(phase!=="idle")return;
     startRef.current=Date.now();
     setLogs([]);setHealed(false);
-    const s=scenario.sim,steps=scenario.steps;
+    const s=scenario.sim;
     setPhase("running");setStatusMsg("Insights Orchestrator dispatching swarm…");
     addLog("orchestrator",null,`Alert received: <strong>${scenario.alertMsg}</strong>`);
     await sleep(600);
 
+    // Monitor phase — mirrors LiveIncidentPanel exactly: tool calls → reasoning → flag
     setStatusMsg("GPU Telemetry Monitor scanning…");
-    for(const[tool,html]of steps.mon){addLog("monitor",tool,html);await sleep(500);}
-    await sleep(200);
+    addLog("monitor",s.monTools[0][0],s.monTools[0][1]);
+    await sleep(500);
+    addLog("monitor",s.monTools[1][0],s.monTools[1][1]);
+    await sleep(500);
+    addLog("monitor",s.monTools[2][0],s.monTools[2][1]);
+    await sleep(400);
     setStatusMsg("GPU Telemetry Monitor reasoning…");
     await typeText(s.monReasoning);
     await sleep(200);
-    addLog("monitor","gpu_telemetry: flag_incident()",steps.monFlag);
+    addLog("monitor","gpu_telemetry: flag_incident()",s.monFlag);
     await sleep(400);
     addLog("orchestrator",null,"Signal validated. Guardrail check passed. Routing to Root Cause Agent.");
     await sleep(500);
 
+    // Diagnostic phase — tool calls → reasoning → submit_diagnosis
     setStatusMsg("Root Cause Agent investigating…");
-    for(const[tool,html]of steps.diag){addLog("diagnostic",tool,html);await sleep(600);}
+    addLog("diagnostic",s.diagTools[0][0],s.diagTools[0][1]);
+    await sleep(600);
+    addLog("diagnostic",s.diagTools[1][0],s.diagTools[1][1]);
+    await sleep(500);
+    addLog("diagnostic",s.diagTools[2][0],s.diagTools[2][1]);
+    await sleep(400);
     setStatusMsg("Root Cause Agent reasoning…");
     await typeText(s.diagReasoning);
     await sleep(200);
-    addLog("diagnostic","gpu_insights: submit_diagnosis()",steps.diagFlag);
+    addLog("diagnostic","gpu_insights: submit_diagnosis()",s.diagFlag);
     await sleep(400);
     addLog("orchestrator",null,"Diagnosis confirmed. Guardrail satisfied. Routing to Action Agent.");
     await sleep(500);
 
+    // Response phase — get_diagnosis guardrail check (mirrors NetOps) → tools → autoAct → reasoning → report
     setStatusMsg("Action Agent executing…");
-    for(const[tool,html]of steps.resp){addLog("response",tool,html);await sleep(500);}
+    addLog("response","gpu_insights: get_diagnosis()","Diagnosis retrieved. Guardrail check: PASSED.");
+    await sleep(400);
+    addLog("response",s.respTools[0][0],s.respTools[0][1]);
+    await sleep(500);
+    addLog("response",s.respTools[1][0],s.respTools[1][1]);
+    await sleep(500);
+    addLog("response",`cluster_manager: apply_remediation("${scenario.id}")`,s.autoAct);
+    await sleep(500);
     setStatusMsg("Action Agent reasoning…");
     await typeText(s.respReasoning);
     await sleep(200);
-    addLog("response","gpu_insights: create_incident_report()",steps.report);
+    addLog("response","gpu_insights: create_incident_report()",s.reportMsg);
     await sleep(400);
 
     setPhase("done");setStatusMsg("");
@@ -671,7 +686,7 @@ function GpuInsightsPanel({scenarioKey,T,theme}){
     addLog("orchestrator","gpu_telemetry: poll_cluster_status()",`<span style="color:#38BDF8">Post-remediation verification on ${scenario.title}…</span>`);
     await sleep(2000);
     setHealed(true);
-    addLog("orchestrator",null,steps.heal+` Total elapsed: ${t()}.`);
+    addLog("orchestrator",null,s.healMsg+` Total elapsed: ${t()}.`);
     setPhase("healed");
   }
 
