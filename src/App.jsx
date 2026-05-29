@@ -1,23 +1,21 @@
 import { useState, useRef, useEffect } from "react";
 
+// ── NetOps data (unchanged) ──────────────────────────────────────────────────
 const NETWORKS = [
   { id:"hq",  name:"HQ Campus",        location:"San Francisco, CA", collector:"col-hq-01",  collectorStatus:"online"   },
   { id:"sea", name:"Seattle Branch",   location:"Seattle, WA",       collector:"col-sea-01", collectorStatus:"online"   },
   { id:"dmz", name:"DMZ / Cloud Edge", location:"AWS us-west-2",     collector:"col-dmz-01", collectorStatus:"degraded" },
 ];
-
 const TOPOLOGY = {
   hq:  [["hq-gw-core-01","hq-fw-edge-01"],["hq-gw-core-01","hq-sw-dist-01"],["hq-sw-dist-01","hq-sw-access-03"],["hq-sw-dist-01","hq-ap-floor2-01"],["hq-sw-access-03","hq-cam-lobby-01"],["hq-sw-dist-01","hq-ups-server-01"]],
   sea: [["sea-gw-01","sea-sw-01"],["sea-sw-01","sea-ap-01"],["sea-sw-01","sea-print-01"],["sea-sw-01","sea-nas-01"]],
   dmz: [["dmz-vpn-gw-01","dmz-lb-01"],["dmz-vpn-gw-01","dmz-waf-01"],["dmz-lb-01","dmz-proxy-01"]],
 };
-
 const TOPO_POS = {
   hq:  {"hq-gw-core-01":[1,0],"hq-fw-edge-01":[0,1],"hq-sw-dist-01":[2,1],"hq-sw-access-03":[1,2],"hq-ap-floor2-01":[3,2],"hq-ups-server-01":[2,2],"hq-cam-lobby-01":[1,3]},
   sea: {"sea-gw-01":[1,0],"sea-sw-01":[1,1],"sea-ap-01":[0,2],"sea-print-01":[1,2],"sea-nas-01":[2,2]},
   dmz: {"dmz-vpn-gw-01":[1,0],"dmz-waf-01":[0,1],"dmz-lb-01":[2,1],"dmz-proxy-01":[2,2]},
 };
-
 const INCIDENT_HISTORY = [
   { id:"INC-2041", ts:"03:14 UTC", device:"HQ Core Router",      network:"HQ Campus",        severity:"P1-Critical", status:"auto-resolved",   mttr:18, affectedUsers:342, estRevenueLoss:9100,  estDowntimeMin:18, rootCause:"BGP peer flap — upstream ISP AS64512 keepalive timeout. CPU 94%, packet loss 18%.", action:"Config rollback via domotz_configuration. Static default route injected via VPN. BGP re-established in 11 min. All 4 ports restored.", requiresApproval:false, swarmLog:[{agent:"monitor",text:"BGP peer down. CPU 94%, packet loss 18%. SNMP bgpPeerState=Idle. P1-Critical flagged."},{agent:"diagnostic",text:"Config drift on 'router bgp 64512' confirmed. Root cause: ISP keepalive timeout. Blast radius: 2 downstream segments. No hardware fault."},{agent:"response",text:"Config rolled back. Static route injected. BGP re-established. All interfaces restored. INC-2041 closed."}] },
   { id:"INC-2042", ts:"03:22 UTC", device:"HQ Edge Firewall",    network:"HQ Campus",        severity:"P1-Critical", status:"pending-approval", mttr:null, affectedUsers:342, estRevenueLoss:null, estDowntimeMin:null, rootCause:"SYN flood attack — session table at 87%, DMZ isolated, unauthorized config drift detected on security-policy DMZ-in.", action:"Rate-limiting ACL applied. ISP blackhole requested. Security team paged. DMZ traffic rerouted. PENDING: permanent policy change requires NOC sign-off.", requiresApproval:true, approvalAction:"Approve permanent removal of unauthorized rule from security-policy DMZ-in and restore baseline DMZ-in policy.", swarmLog:[{agent:"monitor",text:"panSessionUtilization 87%. panThreatTotal 14,220/hr — 28x baseline. SYN flood signature. DMZ interface down. P1-Critical."},{agent:"diagnostic",text:"Unauthorized rule detected in 'security-policy DMZ-in'. Timing correlates with INC-2041 — possible coordinated attack. Config drift flagged."},{agent:"response",text:"Rate-limiting ACL applied. ISP blackhole requested. Awaiting NOC approval to permanently remove unauthorized firewall rule and restore baseline policy."}] },
@@ -27,7 +25,6 @@ const INCIDENT_HISTORY = [
   { id:"INC-2046", ts:"04:51 UTC", device:"DMZ Load Balancer",   network:"DMZ / Cloud Edge", severity:"P2-High",     status:"pending-approval", mttr:null, affectedUsers:null, estRevenueLoss:null, estDowntimeMin:null, rootCause:"2/8 pool members removed — unauthorized config drift on ltmPool webfarm-prod. Connection count 2.1x baseline.", action:"Health check logs pulled. NOC notification sent. PENDING: authorization check required before pool members can be restored.", requiresApproval:true, approvalAction:"Confirm whether removal of pool members at 172.16.1.15 and 172.16.1.16 was authorized. If unauthorized: approve config rollback to restore 8/8 pool members.", swarmLog:[{agent:"monitor",text:"ltmPoolMemberCnt 6/8. Connections 42,100 — 2.1x baseline. CPU 68%, BW 83%."},{agent:"diagnostic",text:"Pool member drift at 03:22 UTC — same timestamp as INC-2042. Possible coordinated event. Cannot auto-restore without authorization check."},{agent:"response",text:"NOC notified. Health check logs pulled. Pool restoration blocked pending your authorization."}] },
   { id:"INC-2047", ts:"05:04 UTC", device:"Server Room UPS",     network:"HQ Campus",        severity:"P2-High",     status:"auto-resolved",   mttr:14, affectedUsers:0,   estRevenueLoss:0,    estDowntimeMin:0,  rootCause:"UPS output load elevated to 78% from server CPU surge during INC-2041 response. Runtime reduced to 24 min.", action:"Non-critical workloads deferred. Generator warm-up confirmed. Load returned to 61% after core router recovery.", requiresApproval:false, swarmLog:[{agent:"monitor",text:"upsOutputLoad 78%, runtime 24 min. Correlated with server CPU surge from INC-2041."},{agent:"diagnostic",text:"Secondary effect of INC-2041 — not a hardware fault. Battery healthy at 91%."},{agent:"response",text:"Non-critical workloads deferred. Generator confirmed. Load returned to 61%. INC-2047 closed."}] },
 ];
-
 const RESOLVED = INCIDENT_HISTORY.filter(i=>i.status==="auto-resolved");
 const KPI = {
   totalIncidents: INCIDENT_HISTORY.length,
@@ -36,10 +33,8 @@ const KPI = {
   avgMttr:        Math.round(RESOLVED.filter(i=>i.mttr).reduce((a,b)=>a+b.mttr,0)/RESOLVED.filter(i=>i.mttr).length),
   totalRevenueSaved:       RESOLVED.reduce((a,b)=>a+(b.estRevenueLoss||0),0),
   totalDowntimePrevented:  RESOLVED.filter(i=>i.estDowntimeMin>0).reduce((a,b)=>a+(b.estDowntimeMin||0),0),
-  slaTarget: 99.95, currentUptime: 99.91,
-  alertsSuppressed: 84,
+  slaTarget: 99.95, currentUptime: 99.91, alertsSuppressed: 84,
 };
-
 const ACTIVE_INCIDENT = {
   id:"INC-2048", ts:"05:17 UTC", device:"HQ Distribution SW", deviceId:"hq-sw-dist-01", network:"HQ Campus", severity:"P2-High",
   alertMsg:"domotz_alerts fired at 05:17 UTC: Port Gi1/0/3 down + collision rate 1,842/min on hq-sw-dist-01. Agent swarm dispatched automatically.",
@@ -53,26 +48,161 @@ const ACTIVE_INCIDENT = {
     autoAct:"Polling interval set to 30s via domotz_alerts. Gi1/0/3 flagged for auto-recovery monitoring. INC-2041 cross-reference logged in shared context store. JIRA ticket HQ-4471 created and linked to INC-2041.",
   }
 };
-
 const DEVICES = [
-  {id:"hq-gw-core-01", network:"hq", name:"HQ Core Router",     type:"Router",       status:"ok",       ip:"10.10.0.1"},
-  {id:"hq-sw-dist-01", network:"hq", name:"HQ Distribution SW", type:"Switch",       status:"warning",  ip:"10.10.0.2"},
-  {id:"hq-fw-edge-01", network:"hq", name:"HQ Edge Firewall",   type:"Firewall",     status:"warning",  ip:"10.10.0.3"},
-  {id:"hq-ap-floor2-01",network:"hq",name:"Floor 2 AP",         type:"Access Point", status:"ok",       ip:"10.10.1.10"},
-  {id:"hq-ups-server-01",network:"hq",name:"Server Room UPS",   type:"UPS",          status:"ok",       ip:"10.10.2.5"},
-  {id:"hq-sw-access-03",network:"hq",name:"Floor 3 Access SW",  type:"Switch",       status:"ok",       ip:"10.10.1.30"},
-  {id:"hq-cam-lobby-01",network:"hq",name:"Lobby IP Camera",    type:"IP Camera",    status:"ok",       ip:"10.10.3.11"},
-  {id:"sea-gw-01",   network:"sea",name:"Seattle Gateway",   type:"Router",       status:"ok",       ip:"10.20.0.1"},
-  {id:"sea-sw-01",   network:"sea",name:"Seattle Core SW",   type:"Switch",       status:"ok",       ip:"10.20.0.2"},
-  {id:"sea-ap-01",   network:"sea",name:"Seattle Office AP", type:"Access Point", status:"ok",       ip:"10.20.1.5"},
-  {id:"sea-print-01",network:"sea",name:"Seattle MFP",       type:"Printer",      status:"ok",       ip:"10.20.2.10"},
-  {id:"sea-nas-01",  network:"sea",name:"Seattle NAS",       type:"NAS",          status:"critical", ip:"10.20.2.20"},
-  {id:"dmz-vpn-gw-01",network:"dmz",name:"VPN Gateway",     type:"VPN Gateway",  status:"ok",       ip:"172.16.0.10"},
-  {id:"dmz-waf-01",  network:"dmz",name:"WAF",               type:"WAF",          status:"ok",       ip:"172.16.0.2"},
-  {id:"dmz-lb-01",   network:"dmz",name:"DMZ Load Balancer", type:"Load Balancer",status:"warning",  ip:"172.16.0.1"},
-  {id:"dmz-proxy-01",network:"dmz",name:"Egress Proxy",      type:"Proxy",        status:"ok",       ip:"172.16.1.5"},
+  {id:"hq-gw-core-01",  network:"hq",  name:"HQ Core Router",     type:"Router",       status:"ok",       ip:"10.10.0.1"},
+  {id:"hq-sw-dist-01",  network:"hq",  name:"HQ Distribution SW", type:"Switch",       status:"warning",  ip:"10.10.0.2"},
+  {id:"hq-fw-edge-01",  network:"hq",  name:"HQ Edge Firewall",   type:"Firewall",     status:"warning",  ip:"10.10.0.3"},
+  {id:"hq-ap-floor2-01",network:"hq",  name:"Floor 2 AP",         type:"Access Point", status:"ok",       ip:"10.10.1.10"},
+  {id:"hq-ups-server-01",network:"hq", name:"Server Room UPS",    type:"UPS",          status:"ok",       ip:"10.10.2.5"},
+  {id:"hq-sw-access-03",network:"hq",  name:"Floor 3 Access SW",  type:"Switch",       status:"ok",       ip:"10.10.1.30"},
+  {id:"hq-cam-lobby-01",network:"hq",  name:"Lobby IP Camera",    type:"IP Camera",    status:"ok",       ip:"10.10.3.11"},
+  {id:"sea-gw-01",      network:"sea", name:"Seattle Gateway",    type:"Router",       status:"ok",       ip:"10.20.0.1"},
+  {id:"sea-sw-01",      network:"sea", name:"Seattle Core SW",    type:"Switch",       status:"ok",       ip:"10.20.0.2"},
+  {id:"sea-ap-01",      network:"sea", name:"Seattle Office AP",  type:"Access Point", status:"ok",       ip:"10.20.1.5"},
+  {id:"sea-print-01",   network:"sea", name:"Seattle MFP",        type:"Printer",      status:"ok",       ip:"10.20.2.10"},
+  {id:"sea-nas-01",     network:"sea", name:"Seattle NAS",        type:"NAS",          status:"critical", ip:"10.20.2.20"},
+  {id:"dmz-vpn-gw-01",  network:"dmz", name:"VPN Gateway",        type:"VPN Gateway",  status:"ok",       ip:"172.16.0.10"},
+  {id:"dmz-waf-01",     network:"dmz", name:"WAF",                type:"WAF",          status:"ok",       ip:"172.16.0.2"},
+  {id:"dmz-lb-01",      network:"dmz", name:"DMZ Load Balancer",  type:"Load Balancer",status:"warning",  ip:"172.16.0.1"},
+  {id:"dmz-proxy-01",   network:"dmz", name:"Egress Proxy",       type:"Proxy",        status:"ok",       ip:"172.16.1.5"},
 ];
 
+// ── GPU Insights data ────────────────────────────────────────────────────────
+const AC_GPU = {
+  orchestrator:{accent:"#94A3B8",dim:"rgba(148,163,184,0.12)",label:"Insights Orchestrator"},
+  monitor:     {accent:"#38BDF8",dim:"rgba(56,189,248,0.1)",  label:"GPU Telemetry Monitor"},
+  diagnostic:  {accent:"#A78BFA",dim:"rgba(167,139,250,0.1)", label:"Root Cause Agent"},
+  response:    {accent:"#34D399",dim:"rgba(52,211,153,0.1)",  label:"Action Agent"},
+};
+
+const GPU_SCENARIOS = {
+  thermal: {
+    id:"GPU-001", ts:"14:23 UTC", severity:"P2-High",
+    title:"Thermal Throttling Detected",
+    subtitle:"16-node A100 Training Cluster · Job: gpt-finetune-7b",
+    alertMsg:"gpu_telemetry fired at 14:23 UTC: Nodes 3 and 7 exceeding 83°C thermal threshold. Compute throughput dropped 18% on active training job. Distributed sync degraded.",
+    affectedNodes:[3,7], totalNodes:16,
+    costLabel:"Est. savings vs. running degraded",  costSaved:3200,
+    additionalCostLabel:null,                        additionalCost:null,
+    metrics:[
+      {l:"GPU Temp",   k:"gpuTemp",   v:87,  hv:71,  u:"°C",       max:100},
+      {l:"Throughput", k:"throughput",v:82,  hv:100, u:"%",         max:100},
+      {l:"Clock Speed",k:"clockSpeed",v:79,  hv:100, u:"% nominal", max:100},
+      {l:"Power Draw", k:"powerDraw", v:94,  hv:76,  u:"% TDP",     max:100},
+      {l:"Throttled",  k:"affected",  v:2,   hv:0,   u:"nodes",     max:16},
+    ],
+    // sim mirrors ACTIVE_INCIDENT.sim exactly: monReasoning, diagReasoning, respReasoning, autoAct
+    // plus GPU-specific tool-call arrays and conclusion strings (monTools/diagTools/respTools etc.)
+    sim:{
+      monReasoning:"GPU core temperature on nodes 3 and 7 registering 87°C — 4°C above thermal throttle threshold of 83°C. DCGM metrics confirm clock speed reduction: nodes 3/7 running at 1,230 MHz vs cluster baseline of 1,560 MHz. Compute throughput telemetry shows 18% degradation on affected nodes. Distributed training sync degraded — barrier wait time elevated 340ms above P50. Classifying P2-High: active job impact, no immediate hardware risk.",
+      diagReasoning:"Thermal throttling confirmed as root cause. Nodes 3 and 7 clock governors have engaged thermal protection, reducing GPU frequency to prevent hardware damage. Thermal history shows sustained temps above 80°C for 22 minutes — cooling system underperforming. Job impact: 18% throughput reduction on 2/16 nodes cascades to global training slowdown via distributed sync barrier. Projected job extension: +2.1 hours at current trajectory. No hardware fault — thermal event only. Confidence: 94%.",
+      respReasoning:"Checkpoint job at current step, isolate nodes 3 and 7 from the training pool, and resubmit on 14 healthy nodes to restore full throughput. Estimated cost impact of catching early vs. running degraded: $3,200 saved. Flag nodes 3 and 7 for proactive thermal inspection before next job assignment. Post-remediation: verify clock speeds return to baseline on healthy nodes within 3 minutes of resubmit.",
+      autoAct:"Job checkpointed at step 8,420. Nodes 3 & 7 quarantined. Job resubmitted on nodes 1–2, 4–6, 8–16 (14 nodes). ETA to resume: 8 minutes. Hardware inspection ticket GPU-HW-0391 created for nodes 3 & 7.",
+      monTools:[
+        ["gpu_telemetry: get_cluster_status()","16-node A100 cluster · collector gpu-col-01 online · training job gpt-finetune-7b active at step 8,420."],
+        ["dcgm_metrics: get_node_metrics('node-03','node-07')","Node-03: <span style='color:#F87171;font-weight:600'>87°C</span> · 1,230 MHz · throughput <span style='color:#F87171;font-weight:600'>82%</span><br>Node-07: <span style='color:#F87171;font-weight:600'>85°C</span> · 1,280 MHz · throughput <span style='color:#FBBF24;font-weight:600'>86%</span>"],
+        ["gpu_telemetry: get_thermal_sensors('node-03','node-07')","<span style='color:#F87171'>NVML thermal throttle flag ACTIVE on both nodes.</span> Fan speed at 98% max. Ambient temp: 24°C."],
+      ],
+      monFlag:"<span style='color:#FBBF24;font-weight:700'>P2-High</span> — Thermal throttle on nodes 3 & 7. Throughput −18%. Distributed sync degraded.",
+      diagTools:[
+        ["dcgm_metrics: get_clock_history('node-03','node-07')","Clock stepped down at 14:01 UTC: 1,560 → 1,230 MHz. Consistent with sustained thermal event, not a transient spike."],
+        ["gpu_insights: get_job_impact_analysis('gpt-finetune-7b')","Barrier wait time +340ms/step. 18% throughput loss on 2 nodes cascades to cluster-wide slowdown. Projected extension: <span style='color:#F87171;font-weight:600'>+2.1 hours</span>."],
+        ["gpu_telemetry: get_thermal_history('node-03','node-07')","Sustained temp >80°C for 22 minutes. Cooling system underperforming — not a transient spike."],
+      ],
+      diagFlag:"<strong>Root cause:</strong> Thermal throttling. <strong>Confidence:</strong> 94%. No hardware fault. Job extension: +2.1 hours.",
+      respTools:[
+        ["job_manager: checkpoint_job('gpt-finetune-7b')","<span style='color:#34D399'>✓ Checkpoint saved</span> at step 8,420."],
+        ["cluster_manager: isolate_nodes(['node-03','node-07'])","<span style='color:#34D399'>✓ Nodes 3 & 7 quarantined.</span> Inspection ticket GPU-HW-0391 created."],
+      ],
+      reportMsg:"<strong>GPU-001 filed.</strong> P2-High thermal throttle on nodes 3 & 7. Job checkpointed and resubmitted on healthy pool. <span style='color:#34D399;font-weight:700'>Est. $3,200 saved</span> vs. running degraded to completion.<br><span style='color:#A78BFA;font-size:10px'>Tools: gpu_telemetry · dcgm_metrics · gpu_insights · job_manager · cluster_manager</span>",
+      healMsg:"<span style='color:#34D399;font-weight:700'>✓ Job healthy.</span> Training resumed on 14-node pool. Clock speeds nominal. Throughput restored to 100%.",
+    },
+  },
+
+  idle: {
+    id:"GPU-002", ts:"09:41 UTC", severity:"P1-Critical",
+    title:"Idle GPU Cost Alert",
+    subtitle:"32-GPU Reserved Cluster · Customer: Meridian AI",
+    alertMsg:"gpu_telemetry fired at 09:41 UTC: 32-GPU reserved cluster below 15% utilization for 38 consecutive minutes. Reserved billing window active — $2,847 accrued and climbing at ~$75/min.",
+    affectedNodes:Array.from({length:32},(_,i)=>i+1), totalNodes:32,
+    costLabel:"Accrued idle GPU cost (so far)",         costSaved:2847,
+    additionalCostLabel:"Additional cost if no action in 30 min", additionalCost:2240,
+    metrics:[
+      {l:"GPU Util",    k:"gpuUtil",  v:8,    hv:94,  u:"%",     max:100},
+      {l:"Idle Time",   k:"idleTime", v:38,   hv:0,   u:"min",   max:60},
+      {l:"Cost Accrued",k:"cost",     v:2847, hv:2847,u:"$",     max:5000},
+      {l:"Power Draw",  k:"powerDraw",v:12,   hv:88,  u:"% TDP", max:100},
+      {l:"Active Jobs", k:"jobs",     v:0,    hv:1,   u:"",      max:4},
+    ],
+    sim:{
+      monReasoning:"GPU utilization across all 32 nodes has been below 15% for 38 consecutive minutes. Reserved cluster billing is active — customer Meridian AI is paying for this capacity. Utilization pattern inconsistent with intentional idle: no job-submitted signal in the last 45 minutes, no data loader processes running. Cost accrued: $2,847. Classifying P1-Critical: active financial bleed with no productive workload.",
+      diagReasoning:"Root cause: training job failed silently 38 minutes ago with an OOM error on node 14. No automatic restart configured. Ruling out alternatives: data loading bottleneck ruled out — loader process not running; intentional idle ruled out — no manual idle signal, no job queued. Job exit code 137 (OOM kill) logged at 09:03 UTC. All 32 GPUs idle since. Cost trajectory: $2,847 accrued, $2,240 additional if no action in 30 minutes. Confidence: 97%.",
+      respReasoning:"Alert customer Meridian AI immediately with cost figure, root cause (OOM on node 14), and two action options: restart the failed job with increased memory allocation, or release the reservation if the job is no longer needed. One-click restart workflow pre-staged with fixed memory config. If no customer response in 15 minutes, escalate to account team. Every minute of inaction accrues ~$75.",
+      autoAct:"Customer alert sent with $2,847 cost figure and OOM root cause. One-click restart staged with increased memory limit on node 14. Account team notified. Utilization threshold adjusted to 10% for faster future detection on this cluster.",
+      monTools:[
+        ["gpu_telemetry: get_cluster_status()","32-GPU reserved cluster · collector gpu-col-meridian online · customer: Meridian AI · reserved window active."],
+        ["dcgm_metrics: get_utilization_history('cluster-meridian','38min')","GPU util: <span style='color:#F87171;font-weight:600'>8%</span> avg across 32 nodes · 38 consecutive minutes below 15% threshold. No utilization spikes detected."],
+        ["billing_api: get_accrued_cost('cluster-meridian')","<span style='color:#F87171;font-weight:700'>$2,847 accrued</span> in idle time. Billing rate: ~$75/min. Reserved window: 4 hours remaining."],
+      ],
+      monFlag:"<span style='color:#F87171;font-weight:700'>P1-Critical</span> — 32 GPUs idle 38 min. $2,847 accrued. No active workload detected.",
+      diagTools:[
+        ["job_manager: get_last_job_status('cluster-meridian')","<span style='color:#F87171'>Exit code 137 (OOM kill)</span> on node 14 at 09:03 UTC. No restart policy configured."],
+        ["job_manager: get_process_list('cluster-meridian')","No data loader process running. No job process running. GPUs at idle power state."],
+        ["cluster_manager: check_idle_signal('cluster-meridian')","<span style='color:#34D399'>No manual idle signal found.</span> No job queued. Unintentional idle confirmed."],
+      ],
+      diagFlag:"<strong>Root cause:</strong> Silent OOM failure — no auto-restart. <strong>Confidence:</strong> 97%. Cost trajectory: +$2,240 if no action in 30 min.",
+      respTools:[
+        ["notification_api: alert_customer('meridian-ai')","<span style='color:#34D399'>✓ Alert sent</span> to Meridian AI: $2,847 cost figure, OOM root cause, two action options included."],
+        ["job_manager: stage_restart_workflow('cluster-meridian')","<span style='color:#34D399'>✓ One-click restart staged</span> with increased memory limit on node 14."],
+      ],
+      reportMsg:"<strong>GPU-002 filed.</strong> P1-Critical idle cluster. $2,847 accrued. Customer alerted. Restart workflow staged. <span style='color:#FBBF24;font-weight:700'>+$2,240 at risk if no response in 30 min.</span><br><span style='color:#A78BFA;font-size:10px'>Tools: gpu_telemetry · dcgm_metrics · billing_api · job_manager · cluster_manager · notification_api</span>",
+      healMsg:"<span style='color:#34D399;font-weight:700'>✓ Cluster active.</span> Meridian AI restarted job. GPU utilization 94%. Financial bleed stopped.",
+    },
+  },
+
+  straggler: {
+    id:"GPU-003", ts:"22:07 UTC", severity:"P2-High",
+    title:"Training Straggler Detected",
+    subtitle:"64-node H100 Cluster · LLM Pre-training Job",
+    alertMsg:"gpu_telemetry fired at 22:07 UTC: Node 12 of 64 consistently 22% slower than cluster median for 47 minutes across 340 training steps. Entire cluster stalling at sync barrier.",
+    affectedNodes:[12], totalNodes:64,
+    costLabel:"Net savings vs. continuing degraded",    costSaved:5400,
+    additionalCostLabel:"Projected cost if unresolved", additionalCost:6100,
+    metrics:[
+      {l:"Step Lag",  k:"stepLag", v:22,   hv:0,   u:"%",        max:50},
+      {l:"Duration",  k:"duration",v:47,   hv:0,   u:"min",      max:60},
+      {l:"Straggler", k:"affected",v:1,    hv:0,   u:"/64 nodes",max:64},
+      {l:"Job ETA",   k:"jobEta",  v:3.8,  hv:0.2, u:"h added",  max:5},
+      {l:"Cost Risk", k:"costRisk",v:6100, hv:0,   u:"$",        max:10000},
+    ],
+    sim:{
+      monReasoning:"Node 12 step completion time: 1.47s vs cluster P50 of 1.20s — consistently 22% above median for 47 minutes and 340 training steps. This is not noise: coefficient of variation across 340 steps is 2.3%, indicating a persistent bottleneck rather than transient spikes. All other 63 nodes are within ±4% of P50. The entire 64-node cluster stalls at each synchronization barrier waiting for node 12. Global throughput impact: 22% job slowdown. Classifying P2-High.",
+      diagReasoning:"Root cause: CPU bottleneck on node 12 starving the GPU data pipeline. CPU utilization on node 12: 98% vs cluster median 34%. I/O wait: 41% — data loader is CPU-bound and cannot pre-fetch fast enough to keep the GPU fed. GPU utilization on node 12 is 67% vs cluster median 94% — GPU is waiting for data, not the reverse. This is a CPU/data-loader bottleneck, not a GPU hardware fault. Whole-cluster impact: every step, 63 healthy nodes complete and wait at the barrier for node 12. Projected extension: +3.8 hours, estimated cost: +$6,100. Confidence: 89%.",
+      respReasoning:"Checkpoint job now. Replace node 12 with a healthy node from the warm pool — estimated swap time: 12 minutes. Resume from checkpoint. Net savings vs. continuing degraded for the remaining job duration: $5,400. Alternative considered: increasing CPU allocation on node 12 — rejected, requires node restart and loses current progress. Longer-term: flag node 12 for CPU hardware inspection and adjust data-loader pinning config.",
+      autoAct:"Job checkpointed at step 8,921. Node 12 evicted and flagged for CPU inspection. Replacement node 47 (warm pool) provisioned and joining cluster. Estimated time to resume: 12 minutes. Hardware ticket GPU-HW-0392 created.",
+      monTools:[
+        ["gpu_telemetry: get_cluster_status()","64-node H100 cluster · collector gpu-col-01 online · LLM pre-training job active · step 8,921 of ~15,000."],
+        ["dcgm_metrics: get_step_timing_distribution('llm-pretrain-job')","Node-12: <span style='color:#F87171;font-weight:600'>1.47s/step</span> vs cluster P50 <span style='color:#34D399'>1.20s</span>. Lag: 22% · 340 consecutive steps · CV: 2.3% (persistent pattern)."],
+        ["gpu_telemetry: get_barrier_wait_times('llm-pretrain-job')","63 nodes waiting at sync barrier each step for node 12. Barrier wait: <span style='color:#F87171;font-weight:600'>+270ms avg</span>. Global throughput: −22%."],
+      ],
+      monFlag:"<span style='color:#FBBF24;font-weight:700'>P2-High</span> — Node 12 straggler across 340 steps · entire 64-node cluster impacted · +3.8h projected.",
+      diagTools:[
+        ["dcgm_metrics: get_cpu_utilization('node-12')","Node-12 CPU: <span style='color:#F87171;font-weight:600'>98%</span> vs cluster median <span style='color:#34D399'>34%</span>. I/O wait: 41%. Data loader is CPU-bound."],
+        ["dcgm_metrics: get_gpu_utilization('node-12')","Node-12 GPU: <span style='color:#FBBF24;font-weight:600'>67%</span> vs cluster median <span style='color:#34D399'>94%</span>. GPU starved for data — not a hardware fault."],
+        ["gpu_insights: rule_out_gpu_fault('node-12')","<span style='color:#34D399'>GPU hardware healthy.</span> Error memory: 0. Thermal: 72°C nominal. Root cause confirmed: CPU/data-loader bottleneck."],
+      ],
+      diagFlag:"<strong>Root cause:</strong> CPU bottleneck starving GPU data feed. <strong>Confidence:</strong> 89%. Not a GPU fault. Cluster-wide impact: 22% slowdown.",
+      respTools:[
+        ["job_manager: checkpoint_job('llm-pretrain-job')","<span style='color:#34D399'>✓ Checkpoint saved</span> at step 8,921."],
+        ["cluster_manager: evict_node('node-12')","<span style='color:#34D399'>✓ Node 12 evicted.</span> CPU inspection ticket GPU-HW-0392 created."],
+      ],
+      reportMsg:"<strong>GPU-003 filed.</strong> P2-High straggler on node 12. Job checkpointed. Replacement provisioning. <span style='color:#34D399;font-weight:700'>Net savings: $5,400</span> vs. running degraded.<br><span style='color:#A78BFA;font-size:10px'>Tools: gpu_telemetry · dcgm_metrics · gpu_insights · job_manager · cluster_manager</span>",
+      healMsg:"<span style='color:#34D399;font-weight:700'>✓ Job resumed.</span> Node 47 joined cluster. All 64 nodes within 4% of P50. Throughput fully restored.",
+    },
+  },
+};
+
+// ── Shared constants ─────────────────────────────────────────────────────────
 const THEMES = {
   dark: {bg:"#070C13",card:"rgba(255,255,255,0.025)",border:"rgba(255,255,255,0.06)",borderHi:"rgba(255,255,255,0.12)",text:"#94A3B8",textHi:"#F1F5F9",textDim:"#334155",textMid:"#64748B",inset:"rgba(255,255,255,0.015)",barBg:"rgba(255,255,255,0.06)"},
   light:{bg:"#F0F4F8",card:"#FFFFFF",              border:"rgba(0,0,0,0.08)",       borderHi:"rgba(0,0,0,0.15)",       text:"#475569",textHi:"#0F172A",textDim:"#94A3B8",textMid:"#64748B",inset:"rgba(0,0,0,0.03)",       barBg:"rgba(0,0,0,0.06)"},
@@ -84,10 +214,13 @@ const STATUS_COLOR={critical:"#F87171",warning:"#FBBF24",ok:"#34D399"};
 const NET_ACCENT={hq:"#38BDF8",sea:"#A78BFA",dmz:"#FB923C"};
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 function mColor(k,v){if(k==="latency")return v>200?"#F87171":v>50?"#FBBF24":"#34D399";if(k==="packetLoss")return v>10?"#F87171":v>2?"#FBBF24":"#34D399";if(k==="bandwidth")return v>90?"#F87171":v>70?"#FBBF24":"#34D399";if(k==="cpu"||k==="mem")return v>85?"#F87171":v>65?"#FBBF24":"#34D399";return"#475569";}
+function gpuMColor(k,v){if(k==="gpuTemp")return v>85?"#F87171":v>80?"#FBBF24":"#34D399";if(k==="throughput"||k==="clockSpeed")return v<70?"#F87171":v<90?"#FBBF24":"#34D399";if(k==="powerDraw")return v>95?"#F87171":v>85?"#FBBF24":"#34D399";if(k==="affected")return v>0?"#F87171":"#34D399";if(k==="gpuUtil")return v<10?"#F87171":v<40?"#FBBF24":"#34D399";if(k==="idleTime")return v>30?"#F87171":v>10?"#FBBF24":"#34D399";if(k==="cost")return v>0?"#F87171":"#34D399";if(k==="jobs")return v===0?"#F87171":"#34D399";if(k==="stepLag")return v>15?"#F87171":v>5?"#FBBF24":"#34D399";if(k==="duration")return v>30?"#F87171":v>10?"#FBBF24":"#34D399";if(k==="jobEta")return v>3?"#F87171":v>1?"#FBBF24":"#34D399";if(k==="costRisk")return v>4000?"#F87171":v>1000?"#FBBF24":"#34D399";return"#94A3B8";}
 function fmt$(n){return n>=1000?"$"+Math.round(n/1000)+"k":"$"+n;}
 
+// ── Shared components ────────────────────────────────────────────────────────
 function Spinner(){return <span style={{width:10,height:10,border:"1.5px solid rgba(56,189,248,0.2)",borderTopColor:"#38BDF8",borderRadius:"50%",display:"inline-block",animation:"spin 0.7s linear infinite",flexShrink:0}}/>;}
 function Badge({agent}){const m=AC[agent?.toLowerCase()]||AC.orchestrator;return <span style={{fontSize:9,fontWeight:700,letterSpacing:"0.07em",textTransform:"uppercase",padding:"2px 7px",borderRadius:3,background:m.dim,color:m.accent,border:`1px solid ${m.accent}33`,fontFamily:"'JetBrains Mono',monospace"}}>{m.label}</span>;}
+function GpuBadge({agent}){const m=AC_GPU[agent?.toLowerCase()]||AC_GPU.orchestrator;return <span style={{fontSize:9,fontWeight:700,letterSpacing:"0.07em",textTransform:"uppercase",padding:"2px 7px",borderRadius:3,background:m.dim,color:m.accent,border:`1px solid ${m.accent}33`,fontFamily:"'JetBrains Mono',monospace"}}>{m.label}</span>;}
 function SevBadge({sev}){return <span style={{fontSize:8,fontWeight:700,letterSpacing:"0.05em",padding:"2px 7px",borderRadius:99,background:SEV_BG[sev]||"rgba(148,163,184,0.1)",color:SEV_COLOR[sev]||"#94A3B8"}}>{sev}</span>;}
 function MiniBar({val,max,color,T}){return <div style={{height:2,background:T.barBg,borderRadius:1,overflow:"hidden",marginTop:3}}><div style={{height:"100%",width:`${Math.min(100,(val/max)*100)}%`,background:color,borderRadius:1,transition:"width 0.8s ease"}}/></div>;}
 
@@ -97,6 +230,7 @@ function TypedText({text,color,onDone}){
   return <div style={{fontSize:11,color,lineHeight:1.75,fontFamily:"'JetBrains Mono',monospace",whiteSpace:"pre-wrap",wordBreak:"break-word"}}>{shown}{shown.length<text.length&&<span style={{display:"inline-block",width:2,height:11,background:color,marginLeft:1,animation:"blink 0.8s step-end infinite",verticalAlign:"text-bottom"}}/>}</div>;
 }
 
+// ── NetOps components (unchanged) ────────────────────────────────────────────
 function TopologyMap({networkId,devices,activeDeviceId,T,theme}){
   const edges=TOPOLOGY[networkId]||[],pos=TOPO_POS[networkId]||{};
   const cols=Math.max(...Object.values(pos).map(p=>p[0]))+1,rows=Math.max(...Object.values(pos).map(p=>p[1]))+1;
@@ -340,7 +474,6 @@ function LiveIncidentPanel({T,theme}){
 
   return(
     <div style={{display:"flex",flexDirection:"column",gap:10}}>
-      {/* Alert card */}
       <div style={{background:"rgba(251,191,36,0.06)",border:"1px solid rgba(251,191,36,0.25)",borderRadius:10,padding:"12px 14px"}}>
         <div style={{display:"flex",alignItems:"flex-start",gap:10,marginBottom:10}}>
           <div style={{width:8,height:8,borderRadius:"50%",background:"#FBBF24",boxShadow:"0 0 10px rgba(251,191,36,0.8)",flexShrink:0,marginTop:3,animation:phase==="idle"?"pulse 1.5s ease infinite":"none"}}/>
@@ -366,7 +499,6 @@ function LiveIncidentPanel({T,theme}){
         </div>
       </div>
 
-      {/* Pipeline */}
       <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:1,border:`1px solid ${T.border}`,borderRadius:7,overflow:"hidden"}}>
         {[{step:1,key:"monitor",label:"Monitor"},{step:2,key:"diagnostic",label:"Diagnostic"},{step:3,key:"response",label:"Response"},{step:4,key:"orchestrator",label:"Complete"}].map((n,i)=>{
           const c=AC[n.key],isA=pStep===n.step,isDone=pStep>n.step||phase==="healed";
@@ -377,7 +509,6 @@ function LiveIncidentPanel({T,theme}){
         })}
       </div>
 
-      {/* Typing */}
       {typingEntry&&(
         <div style={{padding:"10px",background:"rgba(56,189,248,0.04)",border:"1px solid rgba(56,189,248,0.1)",borderRadius:6}}>
           <div style={{fontSize:9,color:"#38BDF8",letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:5,display:"flex",alignItems:"center",gap:6}}><Spinner/>Agent reasoning</div>
@@ -388,7 +519,6 @@ function LiveIncidentPanel({T,theme}){
         <div style={{display:"flex",alignItems:"center",gap:8,fontSize:11,color:"#38BDF8",padding:"8px 10px",background:"rgba(56,189,248,0.04)",border:"1px solid rgba(56,189,248,0.1)",borderRadius:6}}><Spinner/>{statusMsg}</div>
       )}
 
-      {/* CTA */}
       {phase==="idle"&&(
         <button onClick={runSwarm} style={{width:"100%",padding:"12px",fontSize:11,fontWeight:700,letterSpacing:"0.08em",textTransform:"uppercase",border:"1px solid rgba(251,191,36,0.4)",borderRadius:7,background:"rgba(251,191,36,0.06)",color:"#FBBF24",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
           <span style={{width:8,height:8,borderRadius:"50%",background:"#FBBF24",display:"inline-block",animation:"pulse 1.2s ease infinite"}}/>
@@ -402,7 +532,6 @@ function LiveIncidentPanel({T,theme}){
         </div>
       )}
 
-      {/* Execution log */}
       {logs.length>0&&(
         <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:8,overflow:"hidden"}}>
           <div style={{padding:"8px 12px",borderBottom:`1px solid ${T.border}`,display:"flex",alignItems:"center"}}>
@@ -426,7 +555,6 @@ function LiveIncidentPanel({T,theme}){
         </div>
       )}
 
-      {/* Topology */}
       <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:10,overflow:"hidden"}}>
         <div style={{padding:"10px 14px",borderBottom:`1px solid ${T.border}`,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
           <div><div style={{fontSize:11,fontWeight:600,color:T.textHi}}>Network Topology</div><div style={{fontSize:9,color:T.textDim,marginTop:1}}>Active incident highlighted · updates on remediation</div></div>
@@ -452,13 +580,272 @@ function LiveIncidentPanel({T,theme}){
   );
 }
 
+// ── GPU Insights components ──────────────────────────────────────────────────
+function ClusterMap({totalNodes,affectedNodes,healed,T,theme}){
+  const cols=8,rows=Math.ceil(totalNodes/cols);
+  const sz=20,gap=5,px=10,py=10;
+  const W=cols*(sz+gap)-gap+px*2, H=rows*(sz+gap)-gap+py*2;
+  return(
+    <svg width="100%" viewBox={`0 0 ${W} ${H}`} style={{display:"block"}}>
+      {Array.from({length:totalNodes},(_,i)=>{
+        const n=i+1,isA=affectedNodes.includes(n);
+        const cx=px+(i%cols)*(sz+gap)+sz/2, cy=py+Math.floor(i/cols)*(sz+gap)+sz/2;
+        const sc=isA?(healed?"#34D399":"#F87171"):"#34D399";
+        const op=isA?1:0.28;
+        return(
+          <g key={n}>
+            {isA&&!healed&&<circle cx={cx} cy={cy} r={sz/2+4} fill="none" stroke="#F87171" strokeWidth={1.5} strokeDasharray="3,2" opacity={0.75}/>}
+            <circle cx={cx} cy={cy} r={sz/2} fill={theme==="dark"?"#0F1A24":"#E2E8F0"} stroke={sc} strokeWidth={isA?1.5:0.5} opacity={op}/>
+            <text x={cx} y={cy+0.5} textAnchor="middle" dominantBaseline="middle" fontSize={6} fill={sc} fontWeight={isA?700:400} fontFamily="'JetBrains Mono',monospace" opacity={op}>{n}</text>
+            {isA&&<circle cx={cx+sz/2-3} cy={cy-sz/2+3} r={3} fill={healed?"#34D399":"#F87171"}/>}
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
+function GpuInsightsPanel({scenarioKey,T,theme}){
+  const scenario=GPU_SCENARIOS[scenarioKey];
+  const[phase,setPhase]=useState("idle");
+  const[logs,setLogs]=useState([]);
+  const[typingEntry,setTypingEntry]=useState(null);
+  const[statusMsg,setStatusMsg]=useState("");
+  const[healed,setHealed]=useState(false);
+  const bottomRef=useRef(null);
+  const startRef=useRef(null);
+
+  useEffect(()=>{setPhase("idle");setLogs([]);setTypingEntry(null);setStatusMsg("");setHealed(false);},[scenarioKey]);
+  useEffect(()=>{bottomRef.current?.scrollIntoView({behavior:"smooth"});},[logs,typingEntry]);
+
+  const t=()=>((Date.now()-startRef.current)/1000).toFixed(1)+"s";
+  function addLog(agent,tool,html){setLogs(prev=>[...prev,{agent,tool,html,time:t()}]);}
+  function typeText(text){return new Promise(resolve=>setTypingEntry({text,resolve}));}
+  function onTypingDone(){if(typingEntry){typingEntry.resolve();setTypingEntry(null);}}
+
+  async function runSwarm(){
+    if(phase!=="idle")return;
+    startRef.current=Date.now();
+    setLogs([]);setHealed(false);
+    const s=scenario.sim;
+    setPhase("running");setStatusMsg("Insights Orchestrator dispatching swarm…");
+    addLog("orchestrator",null,`Alert received: <strong>${scenario.alertMsg}</strong>`);
+    await sleep(600);
+
+    // Monitor phase — mirrors LiveIncidentPanel exactly: tool calls → reasoning → flag
+    setStatusMsg("GPU Telemetry Monitor scanning…");
+    addLog("monitor",s.monTools[0][0],s.monTools[0][1]);
+    await sleep(500);
+    addLog("monitor",s.monTools[1][0],s.monTools[1][1]);
+    await sleep(500);
+    addLog("monitor",s.monTools[2][0],s.monTools[2][1]);
+    await sleep(400);
+    setStatusMsg("GPU Telemetry Monitor reasoning…");
+    await typeText(s.monReasoning);
+    await sleep(200);
+    addLog("monitor","gpu_telemetry: flag_incident()",s.monFlag);
+    await sleep(400);
+    addLog("orchestrator",null,"Signal validated. Guardrail check passed. Routing to Root Cause Agent.");
+    await sleep(500);
+
+    // Diagnostic phase — tool calls → reasoning → submit_diagnosis
+    setStatusMsg("Root Cause Agent investigating…");
+    addLog("diagnostic",s.diagTools[0][0],s.diagTools[0][1]);
+    await sleep(600);
+    addLog("diagnostic",s.diagTools[1][0],s.diagTools[1][1]);
+    await sleep(500);
+    addLog("diagnostic",s.diagTools[2][0],s.diagTools[2][1]);
+    await sleep(400);
+    setStatusMsg("Root Cause Agent reasoning…");
+    await typeText(s.diagReasoning);
+    await sleep(200);
+    addLog("diagnostic","gpu_insights: submit_diagnosis()",s.diagFlag);
+    await sleep(400);
+    addLog("orchestrator",null,"Diagnosis confirmed. Guardrail satisfied. Routing to Action Agent.");
+    await sleep(500);
+
+    // Response phase — get_diagnosis guardrail check (mirrors NetOps) → tools → autoAct → reasoning → report
+    setStatusMsg("Action Agent executing…");
+    addLog("response","gpu_insights: get_diagnosis()","Diagnosis retrieved. Guardrail check: PASSED.");
+    await sleep(400);
+    addLog("response",s.respTools[0][0],s.respTools[0][1]);
+    await sleep(500);
+    addLog("response",s.respTools[1][0],s.respTools[1][1]);
+    await sleep(500);
+    addLog("response",`cluster_manager: apply_remediation("${scenario.id}")`,s.autoAct);
+    await sleep(500);
+    setStatusMsg("Action Agent reasoning…");
+    await typeText(s.respReasoning);
+    await sleep(200);
+    addLog("response","gpu_insights: create_incident_report()",s.reportMsg);
+    await sleep(400);
+
+    setPhase("done");setStatusMsg("");
+    addLog("orchestrator",null,`<span style="color:#34D399;font-weight:700">✓ ${scenario.id} complete</span> in ${t()}. Swarm returned to standby. Monitoring active.`);
+    await sleep(1500);
+    addLog("orchestrator","gpu_telemetry: poll_cluster_status()",`<span style="color:#38BDF8">Post-remediation verification on ${scenario.title}…</span>`);
+    await sleep(2000);
+    setHealed(true);
+    addLog("orchestrator",null,s.healMsg+` Total elapsed: ${t()}.`);
+    setPhase("healed");
+  }
+
+  const pStep=phase==="idle"?-1:phase==="healed"||phase==="done"?4:logs.length<5?1:logs.length<9?2:3;
+  const sc=SEV_COLOR[scenario.severity]||"#FBBF24";
+  const sbg=scenario.severity==="P1-Critical"?"rgba(248,113,113,0.06)":"rgba(251,191,36,0.06)";
+  const sbd=scenario.severity==="P1-Critical"?"rgba(248,113,113,0.25)":"rgba(251,191,36,0.25)";
+
+  return(
+    <div style={{display:"flex",flexDirection:"column",gap:10}}>
+      {/* Alert card */}
+      <div style={{background:sbg,border:`1px solid ${sbd}`,borderRadius:10,padding:"12px 14px"}}>
+        <div style={{display:"flex",alignItems:"flex-start",gap:10,marginBottom:10}}>
+          <div style={{width:8,height:8,borderRadius:"50%",background:sc,boxShadow:`0 0 10px ${sc}cc`,flexShrink:0,marginTop:3,animation:phase==="idle"?"pulse 1.5s ease infinite":"none"}}/>
+          <div style={{flex:1}}>
+            <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:2,flexWrap:"wrap"}}>
+              <span style={{fontSize:11,fontWeight:700,color:sc}}>LIVE — {scenario.id} · {scenario.ts}</span>
+              <SevBadge sev={scenario.severity}/>
+              <span style={{fontSize:9,color:T.textDim,marginLeft:"auto"}}>{scenario.subtitle}</span>
+            </div>
+            <div style={{fontSize:12,fontWeight:600,color:T.textHi,marginBottom:3}}>{scenario.title}</div>
+            <div style={{fontSize:10,color:T.textDim,lineHeight:1.5}}>{scenario.alertMsg}</div>
+          </div>
+        </div>
+
+        {/* GPU metrics */}
+        <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:5,marginBottom:8}}>
+          {scenario.metrics.map(m=>{
+            const val=healed?m.hv:m.v;
+            const c=gpuMColor(m.k,val);
+            const disp=m.k==="cost"?"$"+val.toLocaleString():m.k==="costRisk"?val>0?"$"+val.toLocaleString():"$0":val;
+            return<div key={m.l} style={{background:T.inset,borderRadius:5,padding:"6px 8px",border:`1px solid ${T.border}`}}>
+              <div style={{fontSize:8,color:T.textDim,textTransform:"uppercase",letterSpacing:"0.07em"}}>{m.l}</div>
+              <div style={{fontSize:13,fontWeight:600,color:c,letterSpacing:"-0.02em",transition:"color 0.8s"}}>{disp}<span style={{fontSize:8,color:T.textDim,marginLeft:1}}>{m.u}</span></div>
+              <MiniBar val={val} max={m.max} color={c} T={T}/>
+            </div>;
+          })}
+        </div>
+
+        {/* Cost impact banners */}
+        <div style={{display:"grid",gridTemplateColumns:scenario.additionalCost?"1fr 1fr":"1fr",gap:6}}>
+          <div style={{padding:"8px 12px",background:"rgba(52,211,153,0.07)",border:"1px solid rgba(52,211,153,0.3)",borderRadius:6,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+            <span style={{fontSize:9,color:T.textDim,textTransform:"uppercase",letterSpacing:"0.08em"}}>{scenario.costLabel}</span>
+            <span style={{fontSize:18,fontWeight:700,color:"#34D399",letterSpacing:"-0.02em"}}>${scenario.costSaved.toLocaleString()}</span>
+          </div>
+          {scenario.additionalCost&&(
+            <div style={{padding:"8px 12px",background:"rgba(248,113,113,0.07)",border:"1px solid rgba(248,113,113,0.3)",borderRadius:6,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+              <span style={{fontSize:9,color:T.textDim,textTransform:"uppercase",letterSpacing:"0.08em"}}>{scenario.additionalCostLabel}</span>
+              <span style={{fontSize:18,fontWeight:700,color:"#F87171",letterSpacing:"-0.02em"}}>${scenario.additionalCost.toLocaleString()}</span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Pipeline — GPU labels */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:1,border:`1px solid ${T.border}`,borderRadius:7,overflow:"hidden"}}>
+        {[
+          {step:1,key:"monitor",   label:"GPU Telemetry Monitor"},
+          {step:2,key:"diagnostic",label:"Root Cause Agent"},
+          {step:3,key:"response",  label:"Action Agent"},
+          {step:4,key:"orchestrator",label:"Complete"},
+        ].map((n,i)=>{
+          const c=AC[n.key],isA=pStep===n.step,isDone=pStep>n.step||phase==="healed";
+          return<div key={n.key} style={{padding:"8px 4px",textAlign:"center",background:isA?c.dim:isDone?"rgba(52,211,153,0.04)":"transparent",borderRight:i<3?`1px solid ${T.border}`:"none",boxShadow:isA?`inset 0 -2px 0 ${c.accent}`:"none",transition:"all 0.4s"}}>
+            <div style={{fontSize:9,fontWeight:600,color:isA?T.textHi:isDone?"#34D399":T.textDim,lineHeight:1.3}}>{n.label}</div>
+            <div style={{fontSize:8,color:isA?c.accent:isDone?"#166834":T.textDim,marginTop:2}}>{isA?"● active":isDone?"✓":"—"}</div>
+          </div>;
+        })}
+      </div>
+
+      {typingEntry&&(
+        <div style={{padding:"10px",background:"rgba(56,189,248,0.04)",border:"1px solid rgba(56,189,248,0.1)",borderRadius:6}}>
+          <div style={{fontSize:9,color:"#38BDF8",letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:5,display:"flex",alignItems:"center",gap:6}}><Spinner/>Agent reasoning</div>
+          <TypedText text={typingEntry.text} color={T.textMid} onDone={onTypingDone}/>
+        </div>
+      )}
+      {statusMsg&&!typingEntry&&phase==="running"&&(
+        <div style={{display:"flex",alignItems:"center",gap:8,fontSize:11,color:"#38BDF8",padding:"8px 10px",background:"rgba(56,189,248,0.04)",border:"1px solid rgba(56,189,248,0.1)",borderRadius:6}}><Spinner/>{statusMsg}</div>
+      )}
+
+      {phase==="idle"&&(
+        <button onClick={runSwarm} style={{width:"100%",padding:"12px",fontSize:11,fontWeight:700,letterSpacing:"0.08em",textTransform:"uppercase",border:`1px solid ${sbd}`,borderRadius:7,background:sbg,color:sc,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+          <span style={{width:8,height:8,borderRadius:"50%",background:sc,display:"inline-block",animation:"pulse 1.2s ease infinite"}}/>
+          Alert active — watch swarm respond to {scenario.id} in real time
+        </button>
+      )}
+      {phase==="healed"&&(
+        <div style={{padding:"10px 14px",background:"rgba(52,211,153,0.06)",border:"1px solid rgba(52,211,153,0.25)",borderRadius:7,display:"flex",alignItems:"center",gap:10}}>
+          <span style={{fontSize:18}}>✓</span>
+          <div>
+            <div style={{fontSize:11,fontWeight:600,color:"#34D399"}}>{scenario.id} resolved · {logs[logs.length-1]?.time||"—"}</div>
+            <div style={{fontSize:9,color:T.textDim}}>Cluster state updated. Swarm returned to standby.</div>
+          </div>
+        </div>
+      )}
+
+      {/* Execution log */}
+      {logs.length>0&&(
+        <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:8,overflow:"hidden"}}>
+          <div style={{padding:"8px 12px",borderBottom:`1px solid ${T.border}`,display:"flex",alignItems:"center"}}>
+            <span style={{fontSize:9,fontWeight:700,color:T.textDim,letterSpacing:"0.1em",textTransform:"uppercase"}}>Agent Execution Log — {scenario.id}</span>
+            <span style={{fontSize:9,color:T.textDim,marginLeft:"auto"}}>{logs.length} events</span>
+          </div>
+          <div style={{padding:"8px 12px",maxHeight:320,overflowY:"auto"}}>
+            {logs.map((log,i)=>(
+              <div key={i} style={{padding:"7px 0",borderBottom:i<logs.length-1?`1px solid ${T.border}`:"none",animation:"fadeUp 0.2s ease"}}>
+                <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:3,flexWrap:"wrap"}}>
+                  <GpuBadge agent={log.agent}/>
+                  {log.tool&&<span style={{fontSize:8,fontFamily:"monospace",color:T.textDim,background:T.inset,padding:"1px 6px",borderRadius:3,maxWidth:"100%",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{log.tool}</span>}
+                  <span style={{fontSize:9,color:T.textDim,marginLeft:"auto"}}>{log.time}</span>
+                </div>
+                <div style={{fontSize:11,color:T.textMid,lineHeight:1.65}} dangerouslySetInnerHTML={{__html:log.html}}/>
+              </div>
+            ))}
+            <div ref={bottomRef}/>
+          </div>
+        </div>
+      )}
+
+      {/* Cluster map */}
+      <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:10,overflow:"hidden"}}>
+        <div style={{padding:"10px 14px",borderBottom:`1px solid ${T.border}`,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+          <div>
+            <div style={{fontSize:11,fontWeight:600,color:T.textHi}}>Cluster Topology</div>
+            <div style={{fontSize:9,color:T.textDim,marginTop:1}}>{scenario.affectedNodes.length} of {scenario.totalNodes} nodes affected · updates on remediation</div>
+          </div>
+          <div style={{display:"flex",gap:12}}>
+            {[["#F87171","Affected"],["#34D399","Healthy"]].map(([c,l])=>(
+              <div key={l} style={{display:"flex",alignItems:"center",gap:4}}>
+                <span style={{width:7,height:7,borderRadius:"50%",background:c,display:"inline-block"}}/>
+                <span style={{fontSize:8,color:T.textDim}}>{l}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div style={{padding:"10px",overflowX:"auto"}}>
+          <ClusterMap totalNodes={scenario.totalNodes} affectedNodes={scenario.affectedNodes} healed={healed} T={T} theme={theme}/>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── App ──────────────────────────────────────────────────────────────────────
 export default function App(){
   const[theme,setTheme]=useState("dark");
+  const[mode,setMode]=useState("netops");
   const[view,setView]=useState("dashboard");
+  const[gpuScenario,setGpuScenario]=useState("thermal");
   const[selectedInc,setSelectedInc]=useState(null);
   const[approvedIds,setApprovedIds]=useState(new Set());
   const T=THEMES[theme];
   const pendingCount=INCIDENT_HISTORY.filter(i=>i.requiresApproval&&!approvedIds.has(i.id)).length;
+
+  const GPU_TABS=[
+    {key:"thermal",  label:"Thermal Throttle",  sev:"P2-High",     desc:"Nodes 3 & 7 overheating"},
+    {key:"idle",     label:"Idle Cost Alert",    sev:"P1-Critical", desc:"32 GPUs idle, billing active"},
+    {key:"straggler",label:"Training Straggler", sev:"P2-High",     desc:"Node 12 slowing entire cluster"},
+  ];
 
   return(
     <div style={{background:T.bg,minHeight:"100vh",color:T.text,fontFamily:"'IBM Plex Sans',system-ui,sans-serif",transition:"background 0.3s,color 0.3s"}}>
@@ -475,30 +862,50 @@ export default function App(){
       `}</style>
 
       {/* Nav */}
-      <div style={{background:T.card,borderBottom:`1px solid ${T.border}`,padding:"0 20px",display:"flex",alignItems:"center",height:48,position:"sticky",top:0,zIndex:100}}>
-        <div style={{display:"flex",alignItems:"center",gap:10,marginRight:24}}>
+      <div style={{background:T.card,borderBottom:`1px solid ${T.border}`,padding:"0 20px",display:"flex",alignItems:"center",height:48,position:"sticky",top:0,zIndex:100,gap:8}}>
+        {/* Logo */}
+        <div style={{display:"flex",alignItems:"center",gap:8,marginRight:8,flexShrink:0}}>
           <div style={{width:7,height:7,borderRadius:"50%",background:"#34D399",boxShadow:"0 0 8px rgba(52,211,153,0.7)"}}/>
           <span style={{fontSize:13,fontWeight:700,color:T.textHi,letterSpacing:"-0.02em"}}>NetOps NOC</span>
           <span style={{fontSize:9,fontWeight:700,letterSpacing:"0.08em",textTransform:"uppercase",padding:"1px 6px",borderRadius:3,background:"rgba(56,189,248,0.08)",color:"#38BDF8",border:"1px solid rgba(56,189,248,0.18)"}}>Domotz MCP</span>
         </div>
-        <div style={{display:"flex",gap:0,flex:1}}>
-          {[["dashboard","Dashboard"],["history","Incident Log"]].map(([v,label])=>(
+
+        {/* Mode selector */}
+        <div style={{display:"flex",background:T.inset,border:`1px solid ${T.border}`,borderRadius:6,overflow:"hidden",marginRight:8,flexShrink:0}}>
+          {[["netops","NetOps"],["gpu","GPU Insights"]].map(([m,label])=>(
+            <button key={m} onClick={()=>setMode(m)} style={{padding:"5px 12px",fontSize:10,fontWeight:700,letterSpacing:"0.04em",border:"none",background:mode===m?"#38BDF8":  "transparent",color:mode===m?"#0F172A":T.textDim,transition:"all 0.15s"}}>
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {/* View tabs — NetOps only */}
+        <div style={{display:"flex",flex:1}}>
+          {mode==="netops"&&[["dashboard","Dashboard"],["history","Incident Log"]].map(([v,label])=>(
             <button key={v} onClick={()=>setView(v)} style={{padding:"0 16px",height:48,fontSize:11,fontWeight:600,border:"none",background:"transparent",color:view===v?T.textHi:T.textDim,borderBottom:view===v?"2px solid #38BDF8":"2px solid transparent",transition:"all 0.15s"}}>
               {label}
               {v==="history"&&pendingCount>0&&<span style={{marginLeft:6,fontSize:8,fontWeight:700,padding:"1px 5px",borderRadius:99,background:"rgba(251,191,36,0.2)",color:"#FBBF24"}}>{pendingCount}</span>}
             </button>
           ))}
+          {mode==="gpu"&&(
+            <div style={{display:"flex",alignItems:"center",gap:6,paddingLeft:4}}>
+              <span style={{fontSize:9,color:T.textDim,textTransform:"uppercase",letterSpacing:"0.1em"}}>GPU Observability · CoreWeave Insights</span>
+            </div>
+          )}
         </div>
-        <div style={{display:"flex",alignItems:"center",gap:10}}>
+
+        {/* Right */}
+        <div style={{display:"flex",alignItems:"center",gap:10,flexShrink:0}}>
           <span style={{fontSize:10,color:T.textDim,fontFamily:"monospace"}}>05:17 UTC · May 07 2025</span>
           <button onClick={()=>setTheme(t=>t==="dark"?"light":"dark")} style={{background:T.inset,border:`1px solid ${T.border}`,borderRadius:6,padding:"5px 10px",fontSize:10,color:T.textMid,transition:"all 0.2s"}}>{theme==="dark"?"☀ Light":"☾ Dark"}</button>
         </div>
       </div>
 
       <div style={{padding:"16px 20px",maxWidth:900,margin:"0 auto"}}>
-        {view==="dashboard"&&(
+
+        {/* ── NetOps mode ── */}
+        {mode==="netops"&&view==="dashboard"&&(
           <div>
-            {/* Alert strip */}
             <div style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",background:"rgba(251,191,36,0.06)",border:"1px solid rgba(251,191,36,0.2)",borderRadius:8,marginBottom:14}}>
               <span style={{width:8,height:8,borderRadius:"50%",background:"#FBBF24",boxShadow:"0 0 10px rgba(251,191,36,0.8)",animation:"pulse 1.5s ease infinite",flexShrink:0}}/>
               <div style={{flex:1}}>
@@ -513,7 +920,7 @@ export default function App(){
           </div>
         )}
 
-        {view==="history"&&(
+        {mode==="netops"&&view==="history"&&(
           <div>
             <div style={{fontSize:10,fontWeight:700,color:T.textDim,letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:10}}>Incident Log · Today</div>
             <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:14}}>
@@ -535,6 +942,45 @@ export default function App(){
             <IncidentHistory T={T} onSelect={setSelectedInc} selectedId={selectedInc?.id}/>
           </div>
         )}
+
+        {/* ── GPU Insights mode ── */}
+        {mode==="gpu"&&(
+          <div>
+            {/* GPU alert strip */}
+            <div style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",background:"rgba(56,189,248,0.05)",border:"1px solid rgba(56,189,248,0.18)",borderRadius:8,marginBottom:14}}>
+              <span style={{width:8,height:8,borderRadius:"50%",background:"#38BDF8",boxShadow:"0 0 10px rgba(56,189,248,0.8)",animation:"pulse 1.5s ease infinite",flexShrink:0}}/>
+              <div style={{flex:1}}>
+                <span style={{fontSize:11,fontWeight:600,color:"#38BDF8"}}>GPU Observability Scenarios — </span>
+                <span style={{fontSize:11,color:T.text}}>same orchestrator → agent swarm pattern applied to GPU AI workload monitoring. Select a scenario and watch the signal-to-action chain.</span>
+              </div>
+              <span style={{fontSize:9,fontWeight:700,color:"#38BDF8",padding:"3px 10px",borderRadius:99,background:"rgba(56,189,248,0.1)",border:"1px solid rgba(56,189,248,0.25)",flexShrink:0,whiteSpace:"nowrap"}}>CoreWeave Insights</span>
+            </div>
+
+            {/* Scenario tabs */}
+            <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:6,marginBottom:14}}>
+              {GPU_TABS.map(tab=>{
+                const isActive=gpuScenario===tab.key;
+                const tc=SEV_COLOR[tab.sev];
+                return(
+                  <button key={tab.key} onClick={()=>setGpuScenario(tab.key)} style={{padding:"10px 12px",background:isActive?T.card:T.inset,border:`1px solid ${isActive?T.borderHi:T.border}`,borderRadius:8,textAlign:"left",cursor:"pointer",transition:"all 0.15s",boxShadow:isActive?`inset 0 -2px 0 ${tc}`:"none"}}>
+                    <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:3}}>
+                      <span style={{width:6,height:6,borderRadius:"50%",background:isActive?tc:"transparent",border:`1.5px solid ${tc}`,display:"inline-block",flexShrink:0,transition:"background 0.15s"}}/>
+                      <span style={{fontSize:10,fontWeight:700,color:isActive?T.textHi:T.textMid}}>{tab.label}</span>
+                    </div>
+                    <div style={{fontSize:9,color:T.textDim,paddingLeft:12}}>{tab.desc}</div>
+                    <div style={{paddingLeft:12,marginTop:4}}><SevBadge sev={tab.sev}/></div>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div style={{fontSize:10,fontWeight:700,color:T.textDim,letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:8}}>
+              Live Scenario · Swarm Active — {GPU_TABS.find(t=>t.key===gpuScenario)?.label}
+            </div>
+            <GpuInsightsPanel key={gpuScenario} scenarioKey={gpuScenario} T={T} theme={theme}/>
+          </div>
+        )}
+
       </div>
     </div>
   );
