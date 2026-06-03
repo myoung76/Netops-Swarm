@@ -82,6 +82,8 @@ const GPU_SCENARIOS = {
     subtitle:"16-node A100 Training Cluster · Job: gpt-finetune-7b",
     alertMsg:"gpu_telemetry fired at 14:23 UTC: Nodes 3 and 7 exceeding 83°C thermal threshold. Compute throughput dropped 18% on active training job. Distributed sync degraded.",
     affectedNodes:[3,7], totalNodes:16,
+    requiresApproval:true,
+    approvalAction:"Authorize isolation of nodes 3 & 7 from cluster and job resubmission on 14 healthy nodes. Checkpoint saved at step 8,420 — training resumes from that point. Estimated interruption: 8 minutes.",
     costLabel:"Est. savings vs. running degraded",  costSaved:3200,
     additionalCostLabel:null,                        additionalCost:null,
     metrics:[
@@ -125,6 +127,8 @@ const GPU_SCENARIOS = {
     subtitle:"32-GPU Reserved Cluster · Customer: Meridian AI",
     alertMsg:"gpu_telemetry fired at 09:41 UTC: 32-GPU reserved cluster below 15% utilization for 38 consecutive minutes. Reserved billing window active — $2,847 accrued and climbing at ~$75/min.",
     affectedNodes:Array.from({length:32},(_,i)=>i+1), totalNodes:32,
+    requiresApproval:false,
+    approvalAction:null,
     costLabel:"Accrued idle GPU cost (so far)",         costSaved:2847,
     additionalCostLabel:"Additional cost if no action in 30 min", additionalCost:2240,
     metrics:[
@@ -166,6 +170,8 @@ const GPU_SCENARIOS = {
     subtitle:"64-node H100 Cluster · LLM Pre-training Job",
     alertMsg:"gpu_telemetry fired at 22:07 UTC: Node 12 of 64 consistently 22% slower than cluster median for 47 minutes across 340 training steps. Entire cluster stalling at sync barrier.",
     affectedNodes:[12], totalNodes:64,
+    requiresApproval:true,
+    approvalAction:"Authorize eviction of node 12 and provisioning of warm-pool replacement node 47. Checkpoint saved at step 8,921 — job resumes automatically. Estimated swap time: 12 minutes.",
     costLabel:"Net savings vs. continuing degraded",    costSaved:5400,
     additionalCostLabel:"Projected cost if unresolved", additionalCost:6100,
     metrics:[
@@ -614,6 +620,7 @@ function GpuInsightsPanel({scenarioKey,T,theme}){
   const[healed,setHealed]=useState(false);
   const bottomRef=useRef(null);
   const startRef=useRef(null);
+  const approvalRef=useRef(null);
 
   useEffect(()=>{setPhase("idle");setLogs([]);setTypingEntry(null);setStatusMsg("");setHealed(false);},[scenarioKey]);
   useEffect(()=>{bottomRef.current?.scrollIntoView({behavior:"smooth"});},[logs,typingEntry]);
@@ -672,6 +679,19 @@ function GpuInsightsPanel({scenarioKey,T,theme}){
     await sleep(500);
     addLog("response",s.respTools[1][0],s.respTools[1][1]);
     await sleep(500);
+
+    // Tiered approval gate: high-risk actions require NOC sign-off; low-risk auto-execute
+    if(scenario.requiresApproval){
+      addLog("response","gpu_insights: queue_for_approval()",`<span style='color:#FBBF24'>⚠ High-risk action queued for NOC authorization.</span> Diagnostic context pre-populated for instant sign-off.`);
+      await sleep(400);
+      addLog("orchestrator",null,"Guardrail enforced — action written to approval queue. Awaiting NOC authorization.");
+      setPhase("awaiting-approval");
+      await new Promise(resolve=>{approvalRef.current=resolve;});
+      setPhase("running");
+      addLog("orchestrator",null,`<span style="color:#34D399;font-weight:700">✓ Authorization received.</span> Executing queued remediation.`);
+      await sleep(400);
+    }
+
     addLog("response",`cluster_manager: apply_remediation("${scenario.id}")`,s.autoAct);
     await sleep(500);
     setStatusMsg("Action Agent reasoning…");
@@ -690,7 +710,7 @@ function GpuInsightsPanel({scenarioKey,T,theme}){
     setPhase("healed");
   }
 
-  const pStep=phase==="idle"?-1:phase==="healed"||phase==="done"?4:logs.length<5?1:logs.length<9?2:3;
+  const pStep=phase==="idle"?-1:phase==="healed"||phase==="done"?4:phase==="awaiting-approval"?3:logs.length<5?1:logs.length<9?2:3;
   const sc=SEV_COLOR[scenario.severity]||"#FBBF24";
   const sbg=scenario.severity==="P1-Critical"?"rgba(248,113,113,0.06)":"rgba(251,191,36,0.06)";
   const sbd=scenario.severity==="P1-Critical"?"rgba(248,113,113,0.25)":"rgba(251,191,36,0.25)";
@@ -750,9 +770,10 @@ function GpuInsightsPanel({scenarioKey,T,theme}){
           {step:4,key:"orchestrator",label:"Complete"},
         ].map((n,i)=>{
           const c=AC[n.key],isA=pStep===n.step,isDone=pStep>n.step||phase==="healed";
-          return<div key={n.key} style={{padding:"8px 4px",textAlign:"center",background:isA?c.dim:isDone?"rgba(52,211,153,0.04)":"transparent",borderRight:i<3?`1px solid ${T.border}`:"none",boxShadow:isA?`inset 0 -2px 0 ${c.accent}`:"none",transition:"all 0.4s"}}>
+          const isWaiting=isA&&phase==="awaiting-approval"&&n.step===3;
+          return<div key={n.key} style={{padding:"8px 4px",textAlign:"center",background:isWaiting?"rgba(251,191,36,0.08)":isA?c.dim:isDone?"rgba(52,211,153,0.04)":"transparent",borderRight:i<3?`1px solid ${T.border}`:"none",boxShadow:isWaiting?`inset 0 -2px 0 #FBBF24`:isA?`inset 0 -2px 0 ${c.accent}`:"none",transition:"all 0.4s"}}>
             <div style={{fontSize:9,fontWeight:600,color:isA?T.textHi:isDone?"#34D399":T.textDim,lineHeight:1.3}}>{n.label}</div>
-            <div style={{fontSize:8,color:isA?c.accent:isDone?"#166834":T.textDim,marginTop:2}}>{isA?"● active":isDone?"✓":"—"}</div>
+            <div style={{fontSize:8,color:isWaiting?"#FBBF24":isA?c.accent:isDone?"#166834":T.textDim,marginTop:2}}>{isWaiting?"⚠ awaiting":isA?"● active":isDone?"✓":"—"}</div>
           </div>;
         })}
       </div>
@@ -765,6 +786,25 @@ function GpuInsightsPanel({scenarioKey,T,theme}){
       )}
       {statusMsg&&!typingEntry&&phase==="running"&&(
         <div style={{display:"flex",alignItems:"center",gap:8,fontSize:11,color:"#38BDF8",padding:"8px 10px",background:"rgba(56,189,248,0.04)",border:"1px solid rgba(56,189,248,0.1)",borderRadius:6}}><Spinner/>{statusMsg}</div>
+      )}
+
+      {phase==="awaiting-approval"&&(
+        <div style={{padding:"12px 14px",background:"rgba(251,191,36,0.05)",border:"1px solid rgba(251,191,36,0.3)",borderRadius:8}}>
+          <div style={{fontSize:9,color:"#FBBF24",textTransform:"uppercase",fontWeight:700,letterSpacing:"0.08em",marginBottom:2}}>⚠ NOC Authorization Required</div>
+          <div style={{fontSize:9,color:T.textDim,marginBottom:8}}>All diagnostic context pre-loaded — high-risk action queued for instant sign-off.</div>
+          <div style={{padding:"8px 10px",background:T.inset,borderRadius:5,border:`1px solid ${T.border}`,marginBottom:6}}>
+            <div style={{fontSize:8,color:T.textDim,textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:3}}>Proposed Action</div>
+            <div style={{fontSize:11,color:T.textHi,lineHeight:1.6}}>{scenario.approvalAction}</div>
+          </div>
+          <div style={{padding:"6px 10px",background:"rgba(52,211,153,0.07)",border:"1px solid rgba(52,211,153,0.2)",borderRadius:5,display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
+            <span style={{fontSize:9,color:T.textDim}}>Est. savings on authorization</span>
+            <span style={{fontSize:14,fontWeight:700,color:"#34D399",letterSpacing:"-0.02em"}}>${scenario.costSaved.toLocaleString()}</span>
+          </div>
+          <div style={{display:"flex",gap:8}}>
+            <button onClick={()=>approvalRef.current?.()} style={{flex:1,padding:"9px",fontSize:10,fontWeight:700,letterSpacing:"0.08em",textTransform:"uppercase",border:"1px solid rgba(52,211,153,0.4)",borderRadius:6,background:"rgba(52,211,153,0.1)",color:"#34D399",cursor:"pointer"}}>✓ Authorize & Execute</button>
+            <button style={{padding:"9px 14px",fontSize:10,fontWeight:600,border:`1px solid ${T.border}`,borderRadius:6,background:"transparent",color:T.textDim,cursor:"pointer"}}>Defer</button>
+          </div>
+        </div>
       )}
 
       {phase==="idle"&&(
