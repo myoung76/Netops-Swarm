@@ -17,9 +17,9 @@ const TOPO_POS = {
   dmz: {"dmz-vpn-gw-01":[1,0],"dmz-waf-01":[0,1],"dmz-lb-01":[2,1],"dmz-proxy-01":[2,2]},
 };
 const INCIDENT_HISTORY = [
-  { id:"INC-2041", ts:"03:14 UTC", device:"HQ Core Router",      network:"HQ Campus",        severity:"P1-Critical", status:"auto-resolved",   mttr:18, affectedUsers:342, estRevenueLoss:9100,  estDowntimeMin:18, rootCause:"BGP peer flap — upstream ISP AS64512 keepalive timeout. CPU 94%, packet loss 18%.", action:"Config rollback via domotz_configuration. Static default route injected via VPN. BGP re-established in 11 min. All 4 ports restored.", requiresApproval:false, swarmLog:[{agent:"monitor",text:"BGP peer down. CPU 94%, packet loss 18%. SNMP bgpPeerState=Idle. P1-Critical flagged."},{agent:"diagnostic",text:"Config drift on 'router bgp 64512' confirmed. Root cause: ISP keepalive timeout. Blast radius: 2 downstream segments. No hardware fault."},{agent:"response",text:"Config rolled back. Static route injected. BGP re-established. All interfaces restored. INC-2041 closed."}] },
+  { id:"INC-2041", ts:"03:14 UTC", device:"HQ Core Router",      network:"HQ Campus",        severity:"P1-Critical", status:"auto-resolved",   mttr:18, affectedUsers:342, estRevenueLoss:9100,  estDowntimeMin:18, rootCause:"BGP peer flap — upstream ISP AS64512 keepalive timeout. CPU 94%, packet loss 18%.", action:"Config rollback via config_api. Static default route injected via VPN. BGP re-established in 11 min. All 4 ports restored.", requiresApproval:false, swarmLog:[{agent:"monitor",text:"BGP peer down. CPU 94%, packet loss 18%. SNMP bgpPeerState=Idle. P1-Critical flagged."},{agent:"diagnostic",text:"Config drift on 'router bgp 64512' confirmed. Root cause: ISP keepalive timeout. Blast radius: 2 downstream segments. No hardware fault."},{agent:"response",text:"Config rolled back. Static route injected. BGP re-established. All interfaces restored. INC-2041 closed."}] },
   { id:"INC-2042", ts:"03:22 UTC", device:"HQ Edge Firewall",    network:"HQ Campus",        severity:"P1-Critical", status:"pending-approval", mttr:null, affectedUsers:342, estRevenueLoss:null, estDowntimeMin:null, rootCause:"SYN flood attack — session table at 87%, DMZ isolated, unauthorized config drift detected on security-policy DMZ-in.", action:"Rate-limiting ACL applied. ISP blackhole requested. Security team paged. DMZ traffic rerouted. PENDING: permanent policy change requires NOC sign-off.", requiresApproval:true, approvalAction:"Approve permanent removal of unauthorized rule from security-policy DMZ-in and restore baseline DMZ-in policy.", swarmLog:[{agent:"monitor",text:"panSessionUtilization 87%. panThreatTotal 14,220/hr — 28x baseline. SYN flood signature. DMZ interface down. P1-Critical."},{agent:"diagnostic",text:"Unauthorized rule detected in 'security-policy DMZ-in'. Timing correlates with INC-2041 — possible coordinated attack. Config drift flagged."},{agent:"response",text:"Rate-limiting ACL applied. ISP blackhole requested. Awaiting NOC approval to permanently remove unauthorized firewall rule and restore baseline policy."}] },
-  { id:"INC-2043", ts:"03:45 UTC", device:"Egress Proxy",        network:"DMZ / Cloud Edge", severity:"P1-Critical", status:"auto-resolved",   mttr:22, affectedUsers:189, estRevenueLoss:4400,  estDowntimeMin:22, rootCause:"Unauthorized 'acl BYPASS src' config change — cache bypassed, 10x origin traffic surge. CPU 97%, memory 93%.", action:"Config rollback via domotz_configuration. eth1 restarted. Cache hit rate recovered from 12% to 67%. Change management audit ticket raised.", requiresApproval:false, swarmLog:[{agent:"monitor",text:"CPU 97%, memory 93%, cache hit rate 12%. 1,840 clients hitting origin directly. P1-Critical."},{agent:"diagnostic",text:"'acl BYPASS src' config drift — applied at 03:45 UTC without change ticket. Root cause confirmed. Data exfil risk: low."},{agent:"response",text:"ACL rollback applied. eth1 restarted. Cache hit rate 67% within 8 min. Audit ticket raised. INC-2043 closed."}] },
+  { id:"INC-2043", ts:"03:45 UTC", device:"Egress Proxy",        network:"DMZ / Cloud Edge", severity:"P1-Critical", status:"auto-resolved",   mttr:22, affectedUsers:189, estRevenueLoss:4400,  estDowntimeMin:22, rootCause:"Unauthorized 'acl BYPASS src' config change — cache bypassed, 10x origin traffic surge. CPU 97%, memory 93%.", action:"Config rollback via config_api. eth1 restarted. Cache hit rate recovered from 12% to 67%. Change management audit ticket raised.", requiresApproval:false, swarmLog:[{agent:"monitor",text:"CPU 97%, memory 93%, cache hit rate 12%. 1,840 clients hitting origin directly. P1-Critical."},{agent:"diagnostic",text:"'acl BYPASS src' config drift — applied at 03:45 UTC without change ticket. Root cause confirmed. Data exfil risk: low."},{agent:"response",text:"ACL rollback applied. eth1 restarted. Cache hit rate 67% within 8 min. Audit ticket raised. INC-2043 closed."}] },
   { id:"INC-2044", ts:"04:12 UTC", device:"Seattle NAS",         network:"Seattle Branch",   severity:"P1-Critical", status:"pending-approval", mttr:null, affectedUsers:28,  estRevenueLoss:null, estDowntimeMin:null, rootCause:"RAID6 array degraded after disk failure. Volume at 94%, bonding interface down. Data at risk during rebuild window.", action:"Backup jobs suspended. Non-critical writes paused. I/O freed. PENDING: hardware procurement and rebuild approval required.", requiresApproval:true, approvalAction:"Approve emergency procurement of replacement drive (Synology HAT5310-8T, ~$280) and authorize maintenance window for RAID rebuild.", swarmLog:[{agent:"monitor",text:"diskHealthStatus DEGRADED. Volume 94%, CPU 91%, eth1 bond down. Array vulnerable to second failure. Data-at-risk P1."},{agent:"diagnostic",text:"Drive failure confirmed. Last replacement 3 years ago — EOL. Rebuild may abort if volume hits 97%. This is a data-at-risk incident."},{agent:"response",text:"Backup suspended. I/O freed. Procurement ticket SEA-STOR-112 raised. Awaiting NOC approval for hardware replacement and rebuild window."}] },
   { id:"INC-2045", ts:"04:38 UTC", device:"Seattle Office AP",   network:"Seattle Branch",   severity:"P2-High",     status:"auto-resolved",   mttr:9,  affectedUsers:51,  estRevenueLoss:380,   estDowntimeMin:9,  rootCause:"RF saturation — 51 clients, 74% channel utilization, 12% retry rate. Return-to-office load spike.", action:"Band steering applied. 2.4GHz offload activated. Retry rate recovered to 3%. Capacity expansion ticket SEA-891 raised.", requiresApproval:false, swarmLog:[{agent:"monitor",text:"dot11ChannelUtil 74%, retry rate 12%, packet loss 2.1%. 51 clients near device capacity. P2-High."},{agent:"diagnostic",text:"Return-to-office load spike. No second AP in Seattle. Capacity problem, not a fault."},{agent:"response",text:"Band steering applied. Retry rate recovered to 3%. Capacity expansion ticket SEA-891 raised. INC-2045 closed."}] },
   { id:"INC-2046", ts:"04:51 UTC", device:"DMZ Load Balancer",   network:"DMZ / Cloud Edge", severity:"P2-High",     status:"pending-approval", mttr:null, affectedUsers:null, estRevenueLoss:null, estDowntimeMin:null, rootCause:"2/8 pool members removed — unauthorized config drift on ltmPool webfarm-prod. Connection count 2.1x baseline.", action:"Health check logs pulled. NOC notification sent. PENDING: authorization check required before pool members can be restored.", requiresApproval:true, approvalAction:"Confirm whether removal of pool members at 172.16.1.15 and 172.16.1.16 was authorized. If unauthorized: approve config rollback to restore 8/8 pool members.", swarmLog:[{agent:"monitor",text:"ltmPoolMemberCnt 6/8. Connections 42,100 — 2.1x baseline. CPU 68%, BW 83%."},{agent:"diagnostic",text:"Pool member drift at 03:22 UTC — same timestamp as INC-2042. Possible coordinated event. Cannot auto-restore without authorization check."},{agent:"response",text:"NOC notified. Health check logs pulled. Pool restoration blocked pending your authorization."}] },
@@ -37,15 +37,15 @@ const KPI = {
 };
 const ACTIVE_INCIDENT = {
   id:"INC-2048", ts:"05:17 UTC", device:"HQ Distribution SW", deviceId:"hq-sw-dist-01", network:"HQ Campus", severity:"P2-High",
-  alertMsg:"domotz_alerts fired at 05:17 UTC: Port Gi1/0/3 down + collision rate 1,842/min on hq-sw-dist-01. Agent swarm dispatched automatically.",
+  alertMsg:"monitoring_api detected at 05:17 UTC: Port Gi1/0/3 down + collision rate 1,842/min on hq-sw-dist-01. Agent swarm dispatched automatically.",
   metrics:{latency:48,packetLoss:3,cpu:71,mem:62,bandwidth:61},
   healed: {latency:8, packetLoss:0.1,cpu:24,mem:38,bandwidth:22},
   snmp:[{name:"dot3StatsCollisions",value:"1,842/min",status:"warning"},{name:"stpRootPort",value:"Gi1/0/24",status:"ok"},{name:"ifOperStatus",value:"3/4 up",status:"warning"}],
   sim:{
     monReasoning:"Packet loss 3% exceeds P2 threshold. dot3StatsCollisions spiking to 1,842/min vs baseline <50/min — 36x normal. Gi1/0/3 down. CPU 71% elevated from STP reconvergence. Cross-referencing INC-2041 timeline: BGP failure on core router at 03:14 UTC. Classified P2-High — device functional but degraded.",
-    diagReasoning:"domotz_network confirms Gi1/0/3 is the secondary uplink to HQ Core Router Gi0/0/2 — both went down simultaneously during INC-2041 at 03:14 UTC. STP root port Gi1/0/24 (primary uplink) intact — Layer 2 is functional. Collision counters confirm traffic redistribution artifact from the BGP event, not a hardware fault. Config backup shows no drift. This is a downstream casualty of INC-2041, now in recovery following core router remediation.",
+    diagReasoning:"Topology data confirms Gi1/0/3 is the secondary uplink to HQ Core Router Gi0/0/2 — both went down simultaneously during INC-2041 at 03:14 UTC. STP root port Gi1/0/24 (primary uplink) intact — Layer 2 is functional. Collision counters confirm traffic redistribution artifact from the BGP event, not a hardware fault. Config backup shows no drift. This is a downstream casualty of INC-2041, now in recovery following core router remediation.",
     respReasoning:"P2-High downstream effect of INC-2041. Since the core router has recovered, Gi1/0/3 should auto-restore. Polling set to 30s for verification. If Gi1/0/3 does not recover within 15 min, escalation path: P1 + SFP hardware inspection. No NOC approval needed — auto-remediation is safe here.",
-    autoAct:"Polling interval set to 30s via domotz_alerts. Gi1/0/3 flagged for auto-recovery monitoring. INC-2041 cross-reference logged in shared context store. JIRA ticket HQ-4471 created and linked to INC-2041.",
+    autoAct:"Polling interval set to 30s via alerting_api. Gi1/0/3 flagged for auto-recovery monitoring. INC-2041 cross-reference logged in shared context store. JIRA ticket HQ-4471 created and linked to INC-2041.",
   }
 };
 const DEVICES = [
@@ -82,6 +82,8 @@ const GPU_SCENARIOS = {
     subtitle:"16-node A100 Training Cluster · Job: gpt-finetune-7b",
     alertMsg:"gpu_telemetry fired at 14:23 UTC: Nodes 3 and 7 exceeding 83°C thermal threshold. Compute throughput dropped 18% on active training job. Distributed sync degraded.",
     affectedNodes:[3,7], totalNodes:16,
+    requiresApproval:true,
+    approvalAction:"Authorize isolation of nodes 3 & 7 from cluster and job resubmission on 14 healthy nodes. Checkpoint saved at step 8,420 — training resumes from that point. Estimated interruption: 8 minutes.",
     costLabel:"Est. savings vs. running degraded",  costSaved:3200,
     additionalCostLabel:null,                        additionalCost:null,
     metrics:[
@@ -91,8 +93,6 @@ const GPU_SCENARIOS = {
       {l:"Power Draw", k:"powerDraw", v:94,  hv:76,  u:"% TDP",     max:100},
       {l:"Throttled",  k:"affected",  v:2,   hv:0,   u:"nodes",     max:16},
     ],
-    // sim mirrors ACTIVE_INCIDENT.sim exactly: monReasoning, diagReasoning, respReasoning, autoAct
-    // plus GPU-specific tool-call arrays and conclusion strings (monTools/diagTools/respTools etc.)
     sim:{
       monReasoning:"GPU core temperature on nodes 3 and 7 registering 87°C — 4°C above thermal throttle threshold of 83°C. DCGM metrics confirm clock speed reduction: nodes 3/7 running at 1,230 MHz vs cluster baseline of 1,560 MHz. Compute throughput telemetry shows 18% degradation on affected nodes. Distributed training sync degraded — barrier wait time elevated 340ms above P50. Classifying P2-High: active job impact, no immediate hardware risk.",
       diagReasoning:"Thermal throttling confirmed as root cause. Nodes 3 and 7 clock governors have engaged thermal protection, reducing GPU frequency to prevent hardware damage. Thermal history shows sustained temps above 80°C for 22 minutes — cooling system underperforming. Job impact: 18% throughput reduction on 2/16 nodes cascades to global training slowdown via distributed sync barrier. Projected job extension: +2.1 hours at current trajectory. No hardware fault — thermal event only. Confidence: 94%.",
@@ -125,6 +125,8 @@ const GPU_SCENARIOS = {
     subtitle:"32-GPU Reserved Cluster · Customer: Meridian AI",
     alertMsg:"gpu_telemetry fired at 09:41 UTC: 32-GPU reserved cluster below 15% utilization for 38 consecutive minutes. Reserved billing window active — $2,847 accrued and climbing at ~$75/min.",
     affectedNodes:Array.from({length:32},(_,i)=>i+1), totalNodes:32,
+    requiresApproval:false,
+    approvalAction:null,
     costLabel:"Accrued idle GPU cost (so far)",         costSaved:2847,
     additionalCostLabel:"Additional cost if no action in 30 min", additionalCost:2240,
     metrics:[
@@ -166,6 +168,8 @@ const GPU_SCENARIOS = {
     subtitle:"64-node H100 Cluster · LLM Pre-training Job",
     alertMsg:"gpu_telemetry fired at 22:07 UTC: Node 12 of 64 consistently 22% slower than cluster median for 47 minutes across 340 training steps. Entire cluster stalling at sync barrier.",
     affectedNodes:[12], totalNodes:64,
+    requiresApproval:true,
+    approvalAction:"Authorize eviction of node 12 and provisioning of warm-pool replacement node 47. Checkpoint saved at step 8,921 — job resumes automatically. Estimated swap time: 12 minutes.",
     costLabel:"Net savings vs. continuing degraded",    costSaved:5400,
     additionalCostLabel:"Projected cost if unresolved", additionalCost:6100,
     metrics:[
@@ -267,21 +271,19 @@ function TopologyMap({networkId,devices,activeDeviceId,T,theme}){
 
 function KPIStrip({T}){
   const kpis=[
-    {label:"Incidents Today",    value:KPI.totalIncidents,              sub:"across 3 networks",         color:T.textHi},
-    {label:"Auto-Resolved",      value:KPI.autoResolved,                sub:`of ${KPI.totalIncidents} — no human needed`, color:"#34D399"},
-    {label:"Pending Approval",   value:KPI.pendingApproval,             sub:"require NOC action",        color:"#FBBF24"},
-    {label:"Avg MTTR",           value:KPI.avgMttr+"m",                 sub:"target <30 min",            color:"#38BDF8"},
-    {label:"Downtime Prevented", value:KPI.totalDowntimePrevented+"m",  sub:"est. across P1/P2",         color:"#34D399"},
-    {label:"Revenue Protected",  value:fmt$(KPI.totalRevenueSaved),     sub:"est. impact avoided",       color:"#34D399"},
-    {label:"Network Uptime",     value:KPI.currentUptime+"%",           sub:`SLA target ${KPI.slaTarget}%`, color:KPI.currentUptime>=KPI.slaTarget?"#34D399":"#F87171"},
-    {label:"Alerts Suppressed",  value:KPI.alertsSuppressed,            sub:"de-duped by swarm",         color:T.textMid},
+    {label:"Total Incidents",  value:11,       sub:"network + compute",         color:T.textHi},
+    {label:"Auto-Resolved",    value:4,        sub:"no human intervention",     color:"#34D399"},
+    {label:"Pending Approval", value:KPI.pendingApproval, sub:"awaiting NOC sign-off", color:"#FBBF24"},
+    {label:"Avg MTTR",         value:KPI.avgMttr+"m",     sub:"network auto-resolved", color:"#38BDF8"},
+    {label:"Cost Protected",   value:"$25k",   sub:"network + compute surfaces",color:"#34D399"},
+    {label:"Uptime",           value:KPI.currentUptime+"%", sub:`SLA ${KPI.slaTarget}%`, color:KPI.currentUptime>=KPI.slaTarget?"#34D399":"#F87171"},
   ];
   return(
-    <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:6,marginBottom:14}}>
+    <div style={{display:"grid",gridTemplateColumns:"repeat(6,1fr)",gap:6,marginBottom:14}}>
       {kpis.map(k=>(
         <div key={k.label} style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:8,padding:"10px 12px"}}>
           <div style={{fontSize:8,color:T.textDim,textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:4}}>{k.label}</div>
-          <div style={{fontSize:20,fontWeight:700,color:k.color,letterSpacing:"-0.02em",lineHeight:1}}>{k.value}</div>
+          <div style={{fontSize:18,fontWeight:700,color:k.color,letterSpacing:"-0.02em",lineHeight:1}}>{k.value}</div>
           <div style={{fontSize:8,color:T.textDim,marginTop:3}}>{k.sub}</div>
         </div>
       ))}
@@ -289,39 +291,43 @@ function KPIStrip({T}){
   );
 }
 
-function IncidentHistory({T,onSelect,selectedId}){
+function IncidentQueue({incidents,selectedId,onSelect,approvedIds,T}){
   return(
     <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:10,overflow:"hidden"}}>
       <div style={{padding:"10px 14px",borderBottom:`1px solid ${T.border}`,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-        <div><div style={{fontSize:11,fontWeight:600,color:T.textHi}}>Incident Log</div><div style={{fontSize:9,color:T.textDim,marginTop:1}}>Today · Handled by swarm · Tap to review</div></div>
-        <div style={{display:"flex",gap:8}}>
-          <span style={{fontSize:9,padding:"2px 8px",borderRadius:99,background:"rgba(52,211,153,0.1)",color:"#34D399"}}>{KPI.autoResolved} auto-resolved</span>
-          <span style={{fontSize:9,padding:"2px 8px",borderRadius:99,background:"rgba(251,191,36,0.1)",color:"#FBBF24"}}>{KPI.pendingApproval} pending</span>
-        </div>
+        <div><div style={{fontSize:11,fontWeight:600,color:T.textHi}}>Incident Queue</div><div style={{fontSize:9,color:T.textDim,marginTop:1}}>Live and historical · select to investigate</div></div>
+        <span style={{fontSize:9,color:T.textDim}}>{incidents.length}</span>
       </div>
-      {INCIDENT_HISTORY.map((inc,i)=>{
+      {incidents.length===0&&(
+        <div style={{padding:"24px 14px",textAlign:"center",fontSize:10,color:T.textDim}}>No incidents for this filter.</div>
+      )}
+      {incidents.map((inc,i)=>{
         const isSel=selectedId===inc.id;
+        const isLive=inc.live;
+        const needsApproval=!isLive&&inc.requiresApproval&&!approvedIds.has(inc.id);
+        const surfaceClr=inc.surface==="compute"?"#A78BFA":"#38BDF8";
+        const displayTitle=inc.title||inc.device;
+        const displaySub=inc.surface==="compute"?(inc.subtitle||inc.id):(inc.network||inc.id);
         return(
-          <div key={inc.id} onClick={()=>onSelect(isSel?null:inc)} style={{padding:"10px 14px",borderBottom:i<INCIDENT_HISTORY.length-1?`1px solid ${T.border}`:"none",cursor:"pointer",background:isSel?T.inset:"transparent",transition:"background 0.15s"}}>
-            <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:5}}>
+          <div key={inc.id} onClick={()=>onSelect(inc.id)}
+            style={{padding:"10px 14px",borderBottom:i<incidents.length-1?`1px solid ${T.border}`:"none",cursor:"pointer",background:isSel?T.inset:"transparent",transition:"background 0.15s"}}>
+            <div style={{display:"flex",alignItems:"center",gap:5,marginBottom:4,flexWrap:"wrap"}}>
               <span style={{fontSize:9,fontWeight:700,color:T.textDim,fontFamily:"monospace",flexShrink:0}}>{inc.ts}</span>
+              <span style={{fontSize:8,fontWeight:700,padding:"1px 5px",borderRadius:99,background:`${surfaceClr}18`,color:surfaceClr,flexShrink:0,textTransform:"uppercase",letterSpacing:"0.05em"}}>
+                {inc.surface==="compute"?"Compute":"Network"}
+              </span>
               <SevBadge sev={inc.severity}/>
-              <span style={{fontSize:11,fontWeight:500,color:T.textHi,flex:1,minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{inc.device}</span>
-              <span style={{fontSize:9,color:T.textDim,flexShrink:0}}>{inc.network}</span>
-              {inc.status==="auto-resolved"
-                ?<span style={{fontSize:9,fontWeight:700,padding:"2px 7px",borderRadius:99,background:"rgba(52,211,153,0.1)",color:"#34D399",flexShrink:0}}>✓ resolved</span>
-                :<span style={{fontSize:9,fontWeight:700,padding:"2px 7px",borderRadius:99,background:"rgba(251,191,36,0.12)",color:"#FBBF24",flexShrink:0,animation:"pulse 2s ease infinite"}}>⚠ needs approval</span>
-              }
+              <span style={{marginLeft:"auto",flexShrink:0}}>
+                {isLive
+                  ?<span style={{fontSize:8,fontWeight:700,color:"#38BDF8",animation:"pulse 2s ease infinite"}}>● live</span>
+                  :needsApproval
+                    ?<span style={{fontSize:8,fontWeight:700,color:"#FBBF24"}}>⚠ approval</span>
+                    :<span style={{fontSize:8,color:"#34D399"}}>✓</span>
+                }
+              </span>
             </div>
-            <div style={{fontSize:10,color:T.textDim,lineHeight:1.5,marginBottom:inc.mttr?4:0}}>{inc.rootCause}</div>
-            {inc.status==="auto-resolved"&&inc.mttr&&(
-              <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
-                <span style={{fontSize:9,color:"#34D399"}}>MTTR {inc.mttr} min</span>
-                {inc.affectedUsers>0&&<span style={{fontSize:9,color:T.textDim}}>{inc.affectedUsers} users affected</span>}
-                {inc.estRevenueLoss>0&&<span style={{fontSize:9,color:"#34D399"}}>{fmt$(inc.estRevenueLoss)} impact avoided</span>}
-              </div>
-            )}
-            {inc.status==="pending-approval"&&<div style={{fontSize:9,color:"#FBBF24",marginTop:3}}>⚠ {inc.approvalAction}</div>}
+            <div style={{fontSize:11,fontWeight:500,color:isSel?T.textHi:T.text,lineHeight:1.3,marginBottom:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{displayTitle}</div>
+            <div style={{fontSize:9,color:T.textDim,lineHeight:1.4,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{inc.id} · {displaySub}</div>
           </div>
         );
       })}
@@ -416,53 +422,53 @@ function LiveIncidentPanel({T,theme}){
     addLog("orchestrator",null,`Alert received: <strong>${inc.alertMsg}</strong>`);
     await sleep(600);
     setStatusMsg("Monitor scanning…");
-    addLog("monitor","domotz_agents: get_agent_status()","Collector col-hq-01 online · 7 registered devices in HQ Campus.");
+    addLog("monitor","telemetry_api: get_collector_status()","Collector col-hq-01 online · 7 registered devices in HQ Campus.");
     await sleep(500);
-    addLog("monitor",`domotz_devices: get_device_status("${inc.deviceId}")`,
+    addLog("monitor",`monitoring_api: get_device_status("${inc.deviceId}")`,
       `<strong>${inc.device}</strong> · 10.10.0.2<br/>`+
       `Latency <span style="color:${mColor("latency",m.latency)};font-weight:600">${m.latency}ms</span> · `+
       `Loss <span style="color:${mColor("packetLoss",m.packetLoss)};font-weight:600">${m.packetLoss}%</span> · `+
       `CPU <span style="color:${mColor("cpu",m.cpu)};font-weight:600">${m.cpu}%</span> · `+
       `BW <span style="color:${mColor("bandwidth",m.bandwidth)};font-weight:600">${m.bandwidth}%</span>`);
     await sleep(500);
-    addLog("monitor",`domotz_monitoring: get_snmp_sensors("${inc.deviceId}")`,
+    addLog("monitor",`monitoring_api: get_snmp_sensors("${inc.deviceId}")`,
       inc.snmp.map(s=>`<span style="color:${s.status==="warning"?"#FBBF24":"#34D399"}">${s.name}: ${s.value}</span>`).join(" · "));
     await sleep(400);
     setStatusMsg("Monitor reasoning…");
     await typeText(s.monReasoning);
     await sleep(200);
-    addLog("monitor","domotz_alerts: flag_incident()",`<span style="color:#FBBF24;font-weight:700">P2-High</span> — Port Gi1/0/3 down. Collision rate 36x baseline. Downstream of INC-2041.`);
+    addLog("monitor","alerting_api: flag_incident()",`<span style="color:#FBBF24;font-weight:700">P2-High</span> — Port Gi1/0/3 down. Collision rate 36x baseline. Downstream of INC-2041.`);
     await sleep(400);
     addLog("orchestrator",null,"P2-High written to context store. Guardrail check passed. Routing to Diagnostic agent.");
     await sleep(500);
     setStatusMsg("Diagnostic investigating…");
-    addLog("diagnostic",`domotz_network: get_network_topology("${inc.deviceId}")`,`Mapping dependencies. Cross-referencing INC-2041 blast radius.`);
+    addLog("diagnostic",`topology_api: get_topology("${inc.deviceId}")`,`Mapping dependencies. Cross-referencing INC-2041 blast radius.`);
     await sleep(600);
-    addLog("diagnostic",`domotz_configuration: get_config_backup("${inc.deviceId}")`,`<span style="color:#34D399">No config drift.</span> Baseline match confirmed.`);
+    addLog("diagnostic",`config_api: get_config_backup("${inc.deviceId}")`,`<span style="color:#34D399">No config drift.</span> Baseline match confirmed.`);
     await sleep(500);
-    addLog("diagnostic",`domotz_devices: get_device_history("${inc.deviceId}")`,`Gi1/0/3 down at 03:14 UTC — correlates with INC-2041 BGP failure.`);
+    addLog("diagnostic",`monitoring_api: get_device_history("${inc.deviceId}")`,`Gi1/0/3 down at 03:14 UTC — correlates with INC-2041 BGP failure.`);
     await sleep(400);
     setStatusMsg("Diagnostic reasoning…");
     await typeText(s.diagReasoning);
     await sleep(200);
-    addLog("diagnostic","domotz_monitoring: submit_diagnosis()",`<strong>Root cause:</strong> Downstream STP reconvergence from INC-2041 BGP failure.<br/><strong>Confidence:</strong> high. No hardware fault. Recovery expected post-INC-2041 resolution.`);
+    addLog("diagnostic","monitoring_api: submit_diagnosis()",`<strong>Root cause:</strong> Downstream STP reconvergence from INC-2041 BGP failure.<br/><strong>Confidence:</strong> high. No hardware fault. Recovery expected post-INC-2041 resolution.`);
     await sleep(400);
     addLog("orchestrator",null,"Diagnosis confirmed (high confidence). Guardrail satisfied. Routing to Response agent.");
     await sleep(500);
     setStatusMsg("Response applying actions…");
-    addLog("response","domotz_monitoring: get_diagnosis()","Diagnosis retrieved. Guardrail check: PASSED.");
+    addLog("response","monitoring_api: get_diagnosis()","Diagnosis retrieved. Guardrail check: PASSED.");
     await sleep(400);
-    addLog("response",`domotz_agents: apply_remediation("${inc.deviceId}")`,s.autoAct);
+    addLog("response",`telemetry_api: apply_remediation("${inc.deviceId}")`,s.autoAct);
     await sleep(500);
     setStatusMsg("Response reasoning…");
     await typeText(s.respReasoning);
     await sleep(200);
-    addLog("response","domotz_agents: create_incident_report()",`<strong>INC-2048 filed.</strong> P2-High downstream effect of INC-2041. Polling at 30s. Escalation trigger: Gi1/0/3 not recovered in 15 min → P1 + SFP inspection. No human approval needed.<br/><span style="color:#A78BFA;font-size:10px">Tools: domotz_agents · domotz_monitoring · domotz_network · domotz_configuration · domotz_alerts</span>`);
+    addLog("response","telemetry_api: create_incident_report()",`<strong>INC-2048 filed.</strong> P2-High downstream effect of INC-2041. Polling at 30s. Escalation trigger: Gi1/0/3 not recovered in 15 min → P1 + SFP inspection. No human approval needed.<br/><span style="color:#A78BFA;font-size:10px">Tools: telemetry_api · monitoring_api · topology_api · config_api · alerting_api</span>`);
     await sleep(400);
     setPhase("done");setStatusMsg("");
     addLog("orchestrator",null,`<span style="color:#34D399;font-weight:700">✓ INC-2048 complete</span> in ${t()}. Swarm returned to standby. Monitoring active.`);
     await sleep(1500);
-    addLog("orchestrator","domotz_monitoring: poll_device_status()",`<span style="color:#38BDF8">Post-remediation verification scan on ${inc.device}…</span>`);
+    addLog("orchestrator","monitoring_api: poll_device_status()",`<span style="color:#38BDF8">Post-remediation verification scan on ${inc.device}…</span>`);
     await sleep(2000);
     setHealed(true);
     addLog("orchestrator",null,`<span style="color:#34D399;font-weight:700">✓ Device healed.</span> Gi1/0/3 restored. Collision rate at baseline. ${inc.device} → <span style="color:#34D399;font-weight:700">OK</span>. Topology updated.`);
@@ -614,6 +620,7 @@ function GpuInsightsPanel({scenarioKey,T,theme}){
   const[healed,setHealed]=useState(false);
   const bottomRef=useRef(null);
   const startRef=useRef(null);
+  const approvalRef=useRef(null);
 
   useEffect(()=>{setPhase("idle");setLogs([]);setTypingEntry(null);setStatusMsg("");setHealed(false);},[scenarioKey]);
   useEffect(()=>{bottomRef.current?.scrollIntoView({behavior:"smooth"});},[logs,typingEntry]);
@@ -632,7 +639,6 @@ function GpuInsightsPanel({scenarioKey,T,theme}){
     addLog("orchestrator",null,`Alert received: <strong>${scenario.alertMsg}</strong>`);
     await sleep(600);
 
-    // Monitor phase — mirrors LiveIncidentPanel exactly: tool calls → reasoning → flag
     setStatusMsg("GPU Telemetry Monitor scanning…");
     addLog("monitor",s.monTools[0][0],s.monTools[0][1]);
     await sleep(500);
@@ -648,7 +654,6 @@ function GpuInsightsPanel({scenarioKey,T,theme}){
     addLog("orchestrator",null,"Signal validated. Guardrail check passed. Routing to Root Cause Agent.");
     await sleep(500);
 
-    // Diagnostic phase — tool calls → reasoning → submit_diagnosis
     setStatusMsg("Root Cause Agent investigating…");
     addLog("diagnostic",s.diagTools[0][0],s.diagTools[0][1]);
     await sleep(600);
@@ -664,7 +669,6 @@ function GpuInsightsPanel({scenarioKey,T,theme}){
     addLog("orchestrator",null,"Diagnosis confirmed. Guardrail satisfied. Routing to Action Agent.");
     await sleep(500);
 
-    // Response phase — get_diagnosis guardrail check (mirrors NetOps) → tools → autoAct → reasoning → report
     setStatusMsg("Action Agent executing…");
     addLog("response","gpu_insights: get_diagnosis()","Diagnosis retrieved. Guardrail check: PASSED.");
     await sleep(400);
@@ -672,6 +676,18 @@ function GpuInsightsPanel({scenarioKey,T,theme}){
     await sleep(500);
     addLog("response",s.respTools[1][0],s.respTools[1][1]);
     await sleep(500);
+
+    if(scenario.requiresApproval){
+      addLog("response","gpu_insights: queue_for_approval()",`<span style='color:#FBBF24'>⚠ High-risk action queued for NOC authorization.</span> Diagnostic context pre-populated for instant sign-off.`);
+      await sleep(400);
+      addLog("orchestrator",null,"Guardrail enforced — action written to approval queue. Awaiting NOC authorization.");
+      setPhase("awaiting-approval");
+      await new Promise(resolve=>{approvalRef.current=resolve;});
+      setPhase("running");
+      addLog("orchestrator",null,`<span style="color:#34D399;font-weight:700">✓ Authorization received.</span> Executing queued remediation.`);
+      await sleep(400);
+    }
+
     addLog("response",`cluster_manager: apply_remediation("${scenario.id}")`,s.autoAct);
     await sleep(500);
     setStatusMsg("Action Agent reasoning…");
@@ -690,14 +706,13 @@ function GpuInsightsPanel({scenarioKey,T,theme}){
     setPhase("healed");
   }
 
-  const pStep=phase==="idle"?-1:phase==="healed"||phase==="done"?4:logs.length<5?1:logs.length<9?2:3;
+  const pStep=phase==="idle"?-1:phase==="healed"||phase==="done"?4:phase==="awaiting-approval"?3:logs.length<5?1:logs.length<9?2:3;
   const sc=SEV_COLOR[scenario.severity]||"#FBBF24";
   const sbg=scenario.severity==="P1-Critical"?"rgba(248,113,113,0.06)":"rgba(251,191,36,0.06)";
   const sbd=scenario.severity==="P1-Critical"?"rgba(248,113,113,0.25)":"rgba(251,191,36,0.25)";
 
   return(
     <div style={{display:"flex",flexDirection:"column",gap:10}}>
-      {/* Alert card */}
       <div style={{background:sbg,border:`1px solid ${sbd}`,borderRadius:10,padding:"12px 14px"}}>
         <div style={{display:"flex",alignItems:"flex-start",gap:10,marginBottom:10}}>
           <div style={{width:8,height:8,borderRadius:"50%",background:sc,boxShadow:`0 0 10px ${sc}cc`,flexShrink:0,marginTop:3,animation:phase==="idle"?"pulse 1.5s ease infinite":"none"}}/>
@@ -712,7 +727,6 @@ function GpuInsightsPanel({scenarioKey,T,theme}){
           </div>
         </div>
 
-        {/* GPU metrics */}
         <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:5,marginBottom:8}}>
           {scenario.metrics.map(m=>{
             const val=healed?m.hv:m.v;
@@ -726,7 +740,6 @@ function GpuInsightsPanel({scenarioKey,T,theme}){
           })}
         </div>
 
-        {/* Cost impact banners */}
         <div style={{display:"grid",gridTemplateColumns:scenario.additionalCost?"1fr 1fr":"1fr",gap:6}}>
           <div style={{padding:"8px 12px",background:"rgba(52,211,153,0.07)",border:"1px solid rgba(52,211,153,0.3)",borderRadius:6,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
             <span style={{fontSize:9,color:T.textDim,textTransform:"uppercase",letterSpacing:"0.08em"}}>{scenario.costLabel}</span>
@@ -741,7 +754,6 @@ function GpuInsightsPanel({scenarioKey,T,theme}){
         </div>
       </div>
 
-      {/* Pipeline — GPU labels */}
       <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:1,border:`1px solid ${T.border}`,borderRadius:7,overflow:"hidden"}}>
         {[
           {step:1,key:"monitor",   label:"GPU Telemetry Monitor"},
@@ -750,9 +762,10 @@ function GpuInsightsPanel({scenarioKey,T,theme}){
           {step:4,key:"orchestrator",label:"Complete"},
         ].map((n,i)=>{
           const c=AC[n.key],isA=pStep===n.step,isDone=pStep>n.step||phase==="healed";
-          return<div key={n.key} style={{padding:"8px 4px",textAlign:"center",background:isA?c.dim:isDone?"rgba(52,211,153,0.04)":"transparent",borderRight:i<3?`1px solid ${T.border}`:"none",boxShadow:isA?`inset 0 -2px 0 ${c.accent}`:"none",transition:"all 0.4s"}}>
+          const isWaiting=isA&&phase==="awaiting-approval"&&n.step===3;
+          return<div key={n.key} style={{padding:"8px 4px",textAlign:"center",background:isWaiting?"rgba(251,191,36,0.08)":isA?c.dim:isDone?"rgba(52,211,153,0.04)":"transparent",borderRight:i<3?`1px solid ${T.border}`:"none",boxShadow:isWaiting?`inset 0 -2px 0 #FBBF24`:isA?`inset 0 -2px 0 ${c.accent}`:"none",transition:"all 0.4s"}}>
             <div style={{fontSize:9,fontWeight:600,color:isA?T.textHi:isDone?"#34D399":T.textDim,lineHeight:1.3}}>{n.label}</div>
-            <div style={{fontSize:8,color:isA?c.accent:isDone?"#166834":T.textDim,marginTop:2}}>{isA?"● active":isDone?"✓":"—"}</div>
+            <div style={{fontSize:8,color:isWaiting?"#FBBF24":isA?c.accent:isDone?"#166834":T.textDim,marginTop:2}}>{isWaiting?"⚠ awaiting":isA?"● active":isDone?"✓":"—"}</div>
           </div>;
         })}
       </div>
@@ -765,6 +778,25 @@ function GpuInsightsPanel({scenarioKey,T,theme}){
       )}
       {statusMsg&&!typingEntry&&phase==="running"&&(
         <div style={{display:"flex",alignItems:"center",gap:8,fontSize:11,color:"#38BDF8",padding:"8px 10px",background:"rgba(56,189,248,0.04)",border:"1px solid rgba(56,189,248,0.1)",borderRadius:6}}><Spinner/>{statusMsg}</div>
+      )}
+
+      {phase==="awaiting-approval"&&(
+        <div style={{padding:"12px 14px",background:"rgba(251,191,36,0.05)",border:"1px solid rgba(251,191,36,0.3)",borderRadius:8}}>
+          <div style={{fontSize:9,color:"#FBBF24",textTransform:"uppercase",fontWeight:700,letterSpacing:"0.08em",marginBottom:2}}>⚠ NOC Authorization Required</div>
+          <div style={{fontSize:9,color:T.textDim,marginBottom:8}}>All diagnostic context pre-loaded — high-risk action queued for instant sign-off.</div>
+          <div style={{padding:"8px 10px",background:T.inset,borderRadius:5,border:`1px solid ${T.border}`,marginBottom:6}}>
+            <div style={{fontSize:8,color:T.textDim,textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:3}}>Proposed Action</div>
+            <div style={{fontSize:11,color:T.textHi,lineHeight:1.6}}>{scenario.approvalAction}</div>
+          </div>
+          <div style={{padding:"6px 10px",background:"rgba(52,211,153,0.07)",border:"1px solid rgba(52,211,153,0.2)",borderRadius:5,display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
+            <span style={{fontSize:9,color:T.textDim}}>Est. savings on authorization</span>
+            <span style={{fontSize:14,fontWeight:700,color:"#34D399",letterSpacing:"-0.02em"}}>${scenario.costSaved.toLocaleString()}</span>
+          </div>
+          <div style={{display:"flex",gap:8}}>
+            <button onClick={()=>approvalRef.current?.()} style={{flex:1,padding:"9px",fontSize:10,fontWeight:700,letterSpacing:"0.08em",textTransform:"uppercase",border:"1px solid rgba(52,211,153,0.4)",borderRadius:6,background:"rgba(52,211,153,0.1)",color:"#34D399",cursor:"pointer"}}>✓ Authorize & Execute</button>
+            <button style={{padding:"9px 14px",fontSize:10,fontWeight:600,border:`1px solid ${T.border}`,borderRadius:6,background:"transparent",color:T.textDim,cursor:"pointer"}}>Defer</button>
+          </div>
+        </div>
       )}
 
       {phase==="idle"&&(
@@ -783,7 +815,6 @@ function GpuInsightsPanel({scenarioKey,T,theme}){
         </div>
       )}
 
-      {/* Execution log */}
       {logs.length>0&&(
         <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:8,overflow:"hidden"}}>
           <div style={{padding:"8px 12px",borderBottom:`1px solid ${T.border}`,display:"flex",alignItems:"center"}}>
@@ -806,7 +837,6 @@ function GpuInsightsPanel({scenarioKey,T,theme}){
         </div>
       )}
 
-      {/* Cluster map */}
       <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:10,overflow:"hidden"}}>
         <div style={{padding:"10px 14px",borderBottom:`1px solid ${T.border}`,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
           <div>
@@ -830,22 +860,50 @@ function GpuInsightsPanel({scenarioKey,T,theme}){
   );
 }
 
+// ── Unified incident data ────────────────────────────────────────────────────
+const GPU_KEY_MAP={"GPU-001":"thermal","GPU-002":"idle","GPU-003":"straggler"};
+const UNIFIED_INCIDENTS=[
+  {...GPU_SCENARIOS.straggler,surface:"compute",live:true,status:"live"},
+  {...GPU_SCENARIOS.thermal,  surface:"compute",live:true,status:"live"},
+  {...GPU_SCENARIOS.idle,     surface:"compute",live:true,status:"live"},
+  {...ACTIVE_INCIDENT,title:ACTIVE_INCIDENT.device,surface:"network",live:true,status:"live"},
+  ...[...INCIDENT_HISTORY].reverse().map(i=>({...i,title:i.device,surface:"network",live:false})),
+];
+
+function EmptyState({T}){
+  return(
+    <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:10,padding:"40px 24px",textAlign:"center"}}>
+      <div style={{width:10,height:10,borderRadius:"50%",background:"#34D399",boxShadow:"0 0 14px rgba(52,211,153,0.6)",margin:"0 auto 16px",animation:"pulse 2s ease infinite"}}/>
+      <div style={{fontSize:13,fontWeight:600,color:T.textHi,marginBottom:6}}>Swarm Active · Monitoring All Surfaces</div>
+      <div style={{fontSize:11,color:T.textDim,lineHeight:1.75,maxWidth:340,margin:"0 auto 20px"}}>
+        Select any incident from the queue to view agent reasoning, diagnostic context, and authorize or observe remediation in real time.
+      </div>
+      <div style={{display:"flex",gap:8,justifyContent:"center",flexWrap:"wrap"}}>
+        {[["#38BDF8","Network","1 live · INC-2048"],["#A78BFA","Compute","3 live · GPU-001 · GPU-002 · GPU-003"]].map(([c,label,sub])=>(
+          <div key={label} style={{padding:"8px 14px",background:`${c}10`,border:`1px solid ${c}28`,borderRadius:6,textAlign:"left"}}>
+            <div style={{fontSize:9,color:c,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.08em"}}>{label}</div>
+            <div style={{fontSize:9,color:T.textDim,marginTop:2}}>{sub}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ── App ──────────────────────────────────────────────────────────────────────
 export default function App(){
   const[theme,setTheme]=useState("dark");
-  const[mode,setMode]=useState("netops");
-  const[view,setView]=useState("dashboard");
-  const[gpuScenario,setGpuScenario]=useState("thermal");
-  const[selectedInc,setSelectedInc]=useState(null);
+  const[surfaceFilter,setSurfaceFilter]=useState("all");
+  const[selectedId,setSelectedId]=useState(null);
   const[approvedIds,setApprovedIds]=useState(new Set());
   const T=THEMES[theme];
+
+  const filtered=surfaceFilter==="all"?UNIFIED_INCIDENTS
+    :UNIFIED_INCIDENTS.filter(i=>i.surface===surfaceFilter);
+  const selected=UNIFIED_INCIDENTS.find(i=>i.id===selectedId)||null;
   const pendingCount=INCIDENT_HISTORY.filter(i=>i.requiresApproval&&!approvedIds.has(i.id)).length;
 
-  const GPU_TABS=[
-    {key:"thermal",  label:"Thermal Throttle",  sev:"P2-High",     desc:"Nodes 3 & 7 overheating"},
-    {key:"idle",     label:"Idle Cost Alert",    sev:"P1-Critical", desc:"32 GPUs idle, billing active"},
-    {key:"straggler",label:"Training Straggler", sev:"P2-High",     desc:"Node 12 slowing entire cluster"},
-  ];
+  function handleSelect(id){setSelectedId(prev=>prev===id?null:id);}
 
   return(
     <div style={{background:T.bg,minHeight:"100vh",color:T.text,fontFamily:"'IBM Plex Sans',system-ui,sans-serif",transition:"background 0.3s,color 0.3s"}}>
@@ -861,126 +919,46 @@ export default function App(){
         button{font-family:inherit;cursor:pointer}
       `}</style>
 
-      {/* Nav */}
       <div style={{background:T.card,borderBottom:`1px solid ${T.border}`,padding:"0 20px",display:"flex",alignItems:"center",height:48,position:"sticky",top:0,zIndex:100,gap:8}}>
-        {/* Logo */}
         <div style={{display:"flex",alignItems:"center",gap:8,marginRight:8,flexShrink:0}}>
           <div style={{width:7,height:7,borderRadius:"50%",background:"#34D399",boxShadow:"0 0 8px rgba(52,211,153,0.7)"}}/>
-          <span style={{fontSize:13,fontWeight:700,color:T.textHi,letterSpacing:"-0.02em"}}>NetOps NOC</span>
-          <span style={{fontSize:9,fontWeight:700,letterSpacing:"0.08em",textTransform:"uppercase",padding:"1px 6px",borderRadius:3,background:"rgba(56,189,248,0.08)",color:"#38BDF8",border:"1px solid rgba(56,189,248,0.18)"}}>Domotz MCP</span>
+          <span style={{fontSize:13,fontWeight:700,color:T.textHi,letterSpacing:"-0.02em"}}>Insights</span>
+          <span style={{fontSize:9,fontWeight:700,letterSpacing:"0.08em",textTransform:"uppercase",padding:"1px 6px",borderRadius:3,background:"rgba(52,211,153,0.08)",color:"#34D399",border:"1px solid rgba(52,211,153,0.18)"}}>Agent Swarm</span>
         </div>
 
-        {/* Mode selector */}
-        <div style={{display:"flex",background:T.inset,border:`1px solid ${T.border}`,borderRadius:6,overflow:"hidden",marginRight:8,flexShrink:0}}>
-          {[["netops","NetOps"],["gpu","GPU Insights"]].map(([m,label])=>(
-            <button key={m} onClick={()=>setMode(m)} style={{padding:"5px 12px",fontSize:10,fontWeight:700,letterSpacing:"0.04em",border:"none",background:mode===m?"#38BDF8":  "transparent",color:mode===m?"#0F172A":T.textDim,transition:"all 0.15s"}}>
-              {label}
-            </button>
-          ))}
-        </div>
-
-        {/* View tabs — NetOps only */}
         <div style={{display:"flex",flex:1}}>
-          {mode==="netops"&&[["dashboard","Dashboard"],["history","Incident Log"]].map(([v,label])=>(
-            <button key={v} onClick={()=>setView(v)} style={{padding:"0 16px",height:48,fontSize:11,fontWeight:600,border:"none",background:"transparent",color:view===v?T.textHi:T.textDim,borderBottom:view===v?"2px solid #38BDF8":"2px solid transparent",transition:"all 0.15s"}}>
+          {[["all","All Surfaces"],["network","Network"],["compute","Compute"]].map(([f,label])=>(
+            <button key={f} onClick={()=>{setSurfaceFilter(f);setSelectedId(null);}}
+              style={{padding:"0 16px",height:48,fontSize:11,fontWeight:600,border:"none",background:"transparent",color:surfaceFilter===f?T.textHi:T.textDim,borderBottom:surfaceFilter===f?"2px solid #38BDF8":"2px solid transparent",transition:"all 0.15s",cursor:"pointer"}}>
               {label}
-              {v==="history"&&pendingCount>0&&<span style={{marginLeft:6,fontSize:8,fontWeight:700,padding:"1px 5px",borderRadius:99,background:"rgba(251,191,36,0.2)",color:"#FBBF24"}}>{pendingCount}</span>}
+              {f==="all"&&<span style={{marginLeft:5,fontSize:8,fontWeight:700,padding:"1px 5px",borderRadius:99,background:T.inset,color:T.textDim}}>{UNIFIED_INCIDENTS.length}</span>}
             </button>
           ))}
-          {mode==="gpu"&&(
-            <div style={{display:"flex",alignItems:"center",gap:6,paddingLeft:4}}>
-              <span style={{fontSize:9,color:T.textDim,textTransform:"uppercase",letterSpacing:"0.1em"}}>GPU Observability · CoreWeave Insights</span>
-            </div>
-          )}
         </div>
 
-        {/* Right */}
-        <div style={{display:"flex",alignItems:"center",gap:10,flexShrink:0}}>
-          <span style={{fontSize:10,color:T.textDim,fontFamily:"monospace"}}>05:17 UTC · May 07 2025</span>
-          <button onClick={()=>setTheme(t=>t==="dark"?"light":"dark")} style={{background:T.inset,border:`1px solid ${T.border}`,borderRadius:6,padding:"5px 10px",fontSize:10,color:T.textMid,transition:"all 0.2s"}}>{theme==="dark"?"☀ Light":"☾ Dark"}</button>
-        </div>
+        {pendingCount>0&&<span style={{fontSize:10,fontWeight:700,color:"#FBBF24",padding:"3px 10px",borderRadius:99,background:"rgba(251,191,36,0.12)",border:"1px solid rgba(251,191,36,0.3)",flexShrink:0,whiteSpace:"nowrap"}}>{pendingCount} pending</span>}
+        <span style={{fontSize:10,color:T.textDim,fontFamily:"monospace",flexShrink:0}}>05:17 UTC · May 07 2025</span>
+        <button onClick={()=>setTheme(t=>t==="dark"?"light":"dark")} style={{background:T.inset,border:`1px solid ${T.border}`,borderRadius:6,padding:"5px 10px",fontSize:10,color:T.textMid,transition:"all 0.2s"}}>{theme==="dark"?"☀ Light":"☾ Dark"}</button>
       </div>
 
-      <div style={{padding:"16px 20px",maxWidth:900,margin:"0 auto"}}>
-
-        {/* ── NetOps mode ── */}
-        {mode==="netops"&&view==="dashboard"&&(
-          <div>
-            <div style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",background:"rgba(251,191,36,0.06)",border:"1px solid rgba(251,191,36,0.2)",borderRadius:8,marginBottom:14}}>
-              <span style={{width:8,height:8,borderRadius:"50%",background:"#FBBF24",boxShadow:"0 0 10px rgba(251,191,36,0.8)",animation:"pulse 1.5s ease infinite",flexShrink:0}}/>
-              <div style={{flex:1}}>
-                <span style={{fontSize:11,fontWeight:600,color:"#FBBF24"}}>INC-2048 active — </span>
-                <span style={{fontSize:11,color:T.text}}>domotz_alerts triggered at 05:17 UTC on HQ Distribution SW. Agent swarm dispatched automatically. Click below to watch live.</span>
-              </div>
-              {pendingCount>0&&<span style={{fontSize:10,fontWeight:700,color:"#FBBF24",padding:"3px 10px",borderRadius:99,background:"rgba(251,191,36,0.12)",border:"1px solid rgba(251,191,36,0.3)",flexShrink:0,whiteSpace:"nowrap"}}>{pendingCount} pending approvals</span>}
-            </div>
-            <KPIStrip T={T}/>
-            <div style={{fontSize:10,fontWeight:700,color:T.textDim,letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:8}}>Live Incident · Swarm Active</div>
-            <LiveIncidentPanel T={T} theme={theme}/>
+      <div style={{padding:"16px 20px",maxWidth:1000,margin:"0 auto"}}>
+        <KPIStrip T={T}/>
+        <div style={{display:"grid",gridTemplateColumns:"320px 1fr",gap:12,alignItems:"start"}}>
+          <div style={{position:"sticky",top:64,maxHeight:"calc(100vh - 80px)",overflowY:"auto"}}>
+            <IncidentQueue incidents={filtered} selectedId={selectedId} onSelect={handleSelect} approvedIds={approvedIds} T={T}/>
           </div>
-        )}
-
-        {mode==="netops"&&view==="history"&&(
           <div>
-            <div style={{fontSize:10,fontWeight:700,color:T.textDim,letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:10}}>Incident Log · Today</div>
-            <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:14}}>
-              {[{label:"Total Incidents",value:KPI.totalIncidents,color:T.textHi,sub:"today across all networks"},{label:"Auto-Resolved by Swarm",value:KPI.autoResolved,color:"#34D399",sub:`avg MTTR ${KPI.avgMttr} min`},{label:"Revenue Protected",value:fmt$(KPI.totalRevenueSaved),color:"#34D399",sub:`${KPI.totalDowntimePrevented} min downtime avoided`}].map(k=>(
-                <div key={k.label} style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:8,padding:"12px 14px"}}>
-                  <div style={{fontSize:8,color:T.textDim,textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:4}}>{k.label}</div>
-                  <div style={{fontSize:24,fontWeight:700,color:k.color,letterSpacing:"-0.02em"}}>{k.value}</div>
-                  <div style={{fontSize:9,color:T.textDim,marginTop:3}}>{k.sub}</div>
-                </div>
-              ))}
-            </div>
-            {pendingCount>0&&(
-              <div style={{background:"rgba(251,191,36,0.05)",border:"1px solid rgba(251,191,36,0.2)",borderRadius:8,padding:"10px 14px",marginBottom:12}}>
-                <div style={{fontSize:9,fontWeight:700,color:"#FBBF24",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:4}}>⚠ {pendingCount} Incidents Require Your Approval</div>
-                <div style={{fontSize:10,color:T.text}}>The swarm has paused on these items — human authorization required before proceeding. Tap any incident to review and approve.</div>
-              </div>
+            {!selected&&<EmptyState T={T}/>}
+            {selected&&selected.live&&selected.surface==="network"&&<LiveIncidentPanel T={T} theme={theme}/>}
+            {selected&&selected.live&&selected.surface==="compute"&&<GpuInsightsPanel key={selected.id} scenarioKey={GPU_KEY_MAP[selected.id]} T={T} theme={theme}/>}
+            {selected&&!selected.live&&(
+              <IncidentDetail inc={selected} T={T}
+                onApprove={()=>setApprovedIds(prev=>new Set([...prev,selected.id]))}
+                onDismiss={()=>setSelectedId(null)}
+                approved={approvedIds.has(selected.id)}/>
             )}
-            {selectedInc&&<IncidentDetail inc={selectedInc} T={T} onApprove={()=>setApprovedIds(prev=>new Set([...prev,selectedInc.id]))} onDismiss={()=>setSelectedInc(null)} approved={approvedIds.has(selectedInc.id)}/>}
-            <IncidentHistory T={T} onSelect={setSelectedInc} selectedId={selectedInc?.id}/>
           </div>
-        )}
-
-        {/* ── GPU Insights mode ── */}
-        {mode==="gpu"&&(
-          <div>
-            {/* GPU alert strip */}
-            <div style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",background:"rgba(56,189,248,0.05)",border:"1px solid rgba(56,189,248,0.18)",borderRadius:8,marginBottom:14}}>
-              <span style={{width:8,height:8,borderRadius:"50%",background:"#38BDF8",boxShadow:"0 0 10px rgba(56,189,248,0.8)",animation:"pulse 1.5s ease infinite",flexShrink:0}}/>
-              <div style={{flex:1}}>
-                <span style={{fontSize:11,fontWeight:600,color:"#38BDF8"}}>GPU Observability Scenarios — </span>
-                <span style={{fontSize:11,color:T.text}}>same orchestrator → agent swarm pattern applied to GPU AI workload monitoring. Select a scenario and watch the signal-to-action chain.</span>
-              </div>
-              <span style={{fontSize:9,fontWeight:700,color:"#38BDF8",padding:"3px 10px",borderRadius:99,background:"rgba(56,189,248,0.1)",border:"1px solid rgba(56,189,248,0.25)",flexShrink:0,whiteSpace:"nowrap"}}>CoreWeave Insights</span>
-            </div>
-
-            {/* Scenario tabs */}
-            <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:6,marginBottom:14}}>
-              {GPU_TABS.map(tab=>{
-                const isActive=gpuScenario===tab.key;
-                const tc=SEV_COLOR[tab.sev];
-                return(
-                  <button key={tab.key} onClick={()=>setGpuScenario(tab.key)} style={{padding:"10px 12px",background:isActive?T.card:T.inset,border:`1px solid ${isActive?T.borderHi:T.border}`,borderRadius:8,textAlign:"left",cursor:"pointer",transition:"all 0.15s",boxShadow:isActive?`inset 0 -2px 0 ${tc}`:"none"}}>
-                    <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:3}}>
-                      <span style={{width:6,height:6,borderRadius:"50%",background:isActive?tc:"transparent",border:`1.5px solid ${tc}`,display:"inline-block",flexShrink:0,transition:"background 0.15s"}}/>
-                      <span style={{fontSize:10,fontWeight:700,color:isActive?T.textHi:T.textMid}}>{tab.label}</span>
-                    </div>
-                    <div style={{fontSize:9,color:T.textDim,paddingLeft:12}}>{tab.desc}</div>
-                    <div style={{paddingLeft:12,marginTop:4}}><SevBadge sev={tab.sev}/></div>
-                  </button>
-                );
-              })}
-            </div>
-
-            <div style={{fontSize:10,fontWeight:700,color:T.textDim,letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:8}}>
-              Live Scenario · Swarm Active — {GPU_TABS.find(t=>t.key===gpuScenario)?.label}
-            </div>
-            <GpuInsightsPanel key={gpuScenario} scenarioKey={gpuScenario} T={T} theme={theme}/>
-          </div>
-        )}
-
+        </div>
       </div>
     </div>
   );
