@@ -246,8 +246,8 @@ const GPU_SCENARIOS = {
 
 // ── Shared constants ─────────────────────────────────────────────────────────
 const THEMES = {
-  dark: {bg:"#070C13",card:"rgba(255,255,255,0.025)",border:"rgba(255,255,255,0.06)",borderHi:"rgba(255,255,255,0.12)",text:"#94A3B8",textHi:"#F1F5F9",textDim:"#334155",textMid:"#64748B",inset:"rgba(255,255,255,0.015)",barBg:"rgba(255,255,255,0.06)"},
-  light:{bg:"#F0F4F8",card:"#FFFFFF",              border:"rgba(0,0,0,0.08)",       borderHi:"rgba(0,0,0,0.15)",       text:"#475569",textHi:"#0F172A",textDim:"#94A3B8",textMid:"#64748B",inset:"rgba(0,0,0,0.03)",       barBg:"rgba(0,0,0,0.06)"},
+  dark: {bg:"#070C13",card:"rgba(255,255,255,0.025)",navBg:"#0B1220",border:"rgba(255,255,255,0.06)",borderHi:"rgba(255,255,255,0.12)",text:"#94A3B8",textHi:"#F1F5F9",textDim:"#334155",textMid:"#64748B",inset:"rgba(255,255,255,0.015)",barBg:"rgba(255,255,255,0.06)"},
+  light:{bg:"#F0F4F8",card:"#FFFFFF",              navBg:"#FFFFFF",              border:"rgba(0,0,0,0.08)",       borderHi:"rgba(0,0,0,0.15)",       text:"#475569",textHi:"#0F172A",textDim:"#94A3B8",textMid:"#64748B",inset:"rgba(0,0,0,0.03)",       barBg:"rgba(0,0,0,0.06)"},
 };
 const AC={orchestrator:{accent:"#94A3B8",dim:"rgba(148,163,184,0.12)",label:"Orchestrator"},monitor:{accent:"#38BDF8",dim:"rgba(56,189,248,0.1)",label:"Monitor"},diagnostic:{accent:"#A78BFA",dim:"rgba(167,139,250,0.1)",label:"Diagnostic"},response:{accent:"#34D399",dim:"rgba(52,211,153,0.1)",label:"Response"}};
 const SEV_COLOR={"P1-Critical":"#F87171","P2-High":"#FBBF24","P3-Low":"#34D399"};
@@ -448,9 +448,9 @@ function LiveIncidentPanel({T,theme}){
   const[statusMsg,setStatusMsg]=useState("");
   const[healed,setHealed]=useState(false);
   const[topoNet,setTopoNet]=useState("hq");
-  const bottomRef=useRef(null);
+  const logScrollRef=useRef(null);
   const startRef=useRef(null);
-  useEffect(()=>{bottomRef.current?.scrollIntoView({behavior:"smooth"});},[logs,typingEntry]);
+  useEffect(()=>{if(logScrollRef.current)logScrollRef.current.scrollTop=logScrollRef.current.scrollHeight;},[logs,typingEntry]);
   const t=()=>((Date.now()-startRef.current)/1000).toFixed(1)+"s";
   function addLog(agent,tool,html){setLogs(prev=>[...prev,{agent,tool,html,time:t()}]);}
   function typeText(text){return new Promise(resolve=>setTypingEntry({text,resolve}));}
@@ -593,7 +593,7 @@ function LiveIncidentPanel({T,theme}){
             <span style={{fontSize:9,fontWeight:700,color:T.textDim,letterSpacing:"0.1em",textTransform:"uppercase"}}>Agent Execution Log — INC-2048</span>
             <span style={{fontSize:9,color:T.textDim,marginLeft:"auto"}}>{logs.length} events</span>
           </div>
-          <div style={{padding:"8px 12px",maxHeight:320,overflowY:"auto"}}>
+          <div ref={logScrollRef} style={{padding:"8px 12px",maxHeight:320,overflowY:"auto"}}>
             {logs.map((log,i)=>{
               const c=AC[log.agent]?.accent||"#94A3B8";
               return<div key={i} style={{padding:"7px 0",borderBottom:i<logs.length-1?`1px solid ${T.border}`:"none",animation:"fadeUp 0.2s ease"}}>
@@ -605,7 +605,6 @@ function LiveIncidentPanel({T,theme}){
                 <div style={{fontSize:11,color:T.textMid,lineHeight:1.65}} dangerouslySetInnerHTML={{__html:log.html}}/>
               </div>;
             })}
-            <div ref={bottomRef}/>
           </div>
         </div>
       )}
@@ -667,12 +666,12 @@ function GpuInsightsPanel({scenarioKey,T,theme}){
   const[typingEntry,setTypingEntry]=useState(null);
   const[statusMsg,setStatusMsg]=useState("");
   const[healed,setHealed]=useState(false);
-  const bottomRef=useRef(null);
+  const logScrollRef=useRef(null);
   const startRef=useRef(null);
   const approvalRef=useRef(null);
 
   useEffect(()=>{setPhase("idle");setLogs([]);setTypingEntry(null);setStatusMsg("");setHealed(false);},[scenarioKey]);
-  useEffect(()=>{bottomRef.current?.scrollIntoView({behavior:"smooth"});},[logs,typingEntry]);
+  useEffect(()=>{if(logScrollRef.current)logScrollRef.current.scrollTop=logScrollRef.current.scrollHeight;},[logs,typingEntry]);
 
   const t=()=>((Date.now()-startRef.current)/1000).toFixed(1)+"s";
   function addLog(agent,tool,html){setLogs(prev=>[...prev,{agent,tool,html,time:t()}]);}
@@ -877,7 +876,7 @@ function GpuInsightsPanel({scenarioKey,T,theme}){
             <span style={{fontSize:9,fontWeight:700,color:T.textDim,letterSpacing:"0.1em",textTransform:"uppercase"}}>Agent Execution Log — {scenario.id}</span>
             <span style={{fontSize:9,color:T.textDim,marginLeft:"auto"}}>{logs.length} events</span>
           </div>
-          <div style={{padding:"8px 12px",maxHeight:320,overflowY:"auto"}}>
+          <div ref={logScrollRef} style={{padding:"8px 12px",maxHeight:320,overflowY:"auto"}}>
             {logs.map((log,i)=>(
               <div key={i} style={{padding:"7px 0",borderBottom:i<logs.length-1?`1px solid ${T.border}`:"none",animation:"fadeUp 0.2s ease"}}>
                 <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:3,flexWrap:"wrap"}}>
@@ -888,7 +887,6 @@ function GpuInsightsPanel({scenarioKey,T,theme}){
                 <div style={{fontSize:11,color:T.textMid,lineHeight:1.65}} dangerouslySetInnerHTML={{__html:log.html}}/>
               </div>
             ))}
-            <div ref={bottomRef}/>
           </div>
         </div>
       )}
@@ -977,7 +975,7 @@ export default function App(){
       `}</style>
 
       {/* Nav */}
-      <div style={{background:T.card,borderBottom:`1px solid ${T.border}`,padding:"0 20px",display:"flex",alignItems:"center",height:48,position:"sticky",top:0,zIndex:100,gap:8}}>
+      <div style={{background:T.navBg,borderBottom:`1px solid ${T.border}`,padding:"0 20px",display:"flex",alignItems:"center",height:48,position:"sticky",top:0,zIndex:100,gap:8}}>
         <div style={{display:"flex",alignItems:"center",gap:8,marginRight:8,flexShrink:0}}>
           <div style={{width:7,height:7,borderRadius:"50%",background:"#34D399",boxShadow:"0 0 8px rgba(52,211,153,0.7)"}}/>
           <span style={{fontSize:13,fontWeight:700,color:T.textHi,letterSpacing:"-0.02em"}}>Insights</span>
