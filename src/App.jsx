@@ -46,6 +46,15 @@ const ACTIVE_INCIDENT = {
     diagReasoning:"Topology data confirms Gi1/0/3 is the secondary uplink to HQ Core Router Gi0/0/2 — both went down simultaneously during INC-2041 at 03:14 UTC. STP root port Gi1/0/24 (primary uplink) intact — Layer 2 is functional. Collision counters confirm traffic redistribution artifact from the BGP event, not a hardware fault. Config backup shows no drift. This is a downstream casualty of INC-2041, now in recovery following core router remediation.",
     respReasoning:"P2-High downstream effect of INC-2041. Since the core router has recovered, Gi1/0/3 should auto-restore. Polling set to 30s for verification. If Gi1/0/3 does not recover within 15 min, escalation path: P1 + SFP hardware inspection. No NOC approval needed — auto-remediation is safe here.",
     autoAct:"Polling interval set to 30s via alerting_api. Gi1/0/3 flagged for auto-recovery monitoring. INC-2041 cross-reference logged in shared context store. JIRA ticket HQ-4471 created and linked to INC-2041.",
+    blastRadius:`3 downstream segments affected: <strong>hq-sw-access-03</strong> (Floor 3 Access SW) · <strong>hq-ap-floor2-01</strong> (Floor 2 AP) · <strong>hq-cam-lobby-01</strong> (Lobby IP Camera)<br><span style="color:#FBBF24;font-weight:600">127 users</span> on affected segments · 2 VoIP circuits degraded · 1 backup replication link at risk`,
+    evidenceChain:[
+      {weight:35,label:"Topology correlation",  detail:"Gi1/0/3 confirmed secondary uplink to core — topology graph match"},
+      {weight:30,label:"Event timeline match",  detail:"INC-2041 BGP at 03:14 UTC = Gi1/0/3 down at 03:14 UTC"},
+      {weight:15,label:"Config backup clean",   detail:"No drift on hq-sw-dist-01 — baseline confirmed"},
+      {weight:14,label:"SNMP signal confirmed", detail:"dot3StatsCollisions 36x baseline · STP root port intact"},
+      {weight: 6,label:"Hardware ruled out",    detail:"ifOperStatus 3/4 up · no Rx/Tx errors logged"},
+    ],
+    rollbackAvailable:`Config snapshot <strong>hq-sw-dist-01-2025-05-07T04:52Z</strong> · taken 25 min ago · <span style="color:#34D399">✓ Checksum valid</span> · Estimated rollback time: &lt;30s · Last known good state preserved`,
   }
 };
 const DEVICES = [
@@ -118,6 +127,15 @@ const GPU_SCENARIOS = {
       ],
       reportMsg:"<strong>GPU-001 filed.</strong> P2-High thermal throttle on nodes 3 & 7. Job checkpointed and resubmitted on healthy pool. <span style='color:#34D399;font-weight:700'>Est. $3,200 saved</span> vs. running degraded to completion.<br><span style='color:#A78BFA;font-size:10px'>Tools: gpu_telemetry · dcgm_metrics · gpu_insights · job_manager · cluster_manager</span>",
       healMsg:"<span style='color:#34D399;font-weight:700'>✓ Job healthy.</span> Training resumed on 14-node pool. Clock speeds nominal. Throughput restored to 100%.",
+      blastRadius:`<strong>2/16 throttled nodes</strong> cascade to barrier wait +340ms/step on all 14 healthy nodes · Training ETA extended 14:23 → 16:31 UTC <span style="color:#FBBF24;font-weight:600">(+2.1h)</span> · 1 downstream eval job waiting on checkpoint — delayed by same margin · Customer SLA: completion by 18:00 UTC — within window but degrading`,
+      evidenceChain:[
+        {weight:42,label:"NVML throttle flag active", detail:"87°C sustained 22 min above 83°C threshold on both nodes"},
+        {weight:28,label:"Clock step-down correlated",detail:"1,560→1,230 MHz at 14:01 UTC matches temp crossing threshold"},
+        {weight:15,label:"Cooling underperformance",  detail:"Fans at 98% max, ambient 24°C — expected <90% at this ambient"},
+        {weight: 9,label:"Hardware ruled out",        detail:"No ECC errors, no NVLink faults, no PCIe errors on nodes 3/7"},
+      ],
+      evidenceConfidence:94,
+      rollbackAvailable:`Checkpoint at step 8,420 verified · <span style="color:#34D399">✓ 127 GB · Checksum match</span> · Resume time: 8 min on 14-node pool · Fallback: step 7,800 checkpoint also available (1h 40m older)`,
     },
   },
 
@@ -161,6 +179,15 @@ const GPU_SCENARIOS = {
       ],
       reportMsg:"<strong>GPU-002 filed.</strong> P1-Critical idle cluster. $2,847 accrued. Customer alerted. Restart workflow staged. <span style='color:#FBBF24;font-weight:700'>+$2,240 at risk if no response in 30 min.</span><br><span style='color:#A78BFA;font-size:10px'>Tools: gpu_telemetry · dcgm_metrics · billing_api · job_manager · cluster_manager · notification_api</span>",
       healMsg:"<span style='color:#34D399;font-weight:700'>✓ Cluster active.</span> Meridian AI restarted job. GPU utilization 94%. Financial bleed stopped.",
+      blastRadius:`<strong>32 idle GPUs</strong> · $2,847 accrued at ~$75/min · 0 active workloads · 1 dependent pipeline job blocked waiting on this cluster's output · Customer SLA: next delivery T−6 hours — <span style="color:#FBBF24;font-weight:600">at risk if idle persists 20+ min</span>`,
+      evidenceChain:[
+        {weight:45,label:"OOM exit code confirmed", detail:"Exit code 137 (OOM kill) on node 14 at 09:03 UTC — kernel log"},
+        {weight:25,label:"No restart policy set",   detail:"job_manager: no restart_on_failure config on cluster-meridian"},
+        {weight:18,label:"Loader process absent",   detail:"No data loader running on any of 32 nodes — confirmed idle"},
+        {weight: 9,label:"No manual idle signal",   detail:"No idle flag set — unintentional idle confirmed"},
+      ],
+      evidenceConfidence:97,
+      rollbackAvailable:`One-click restart pre-staged with OOM fix (memory limit +40% on node 14) · <span style="color:#34D399">✓ Config validated</span> · Estimated restart time: 3 min · Fallback: manual job resubmission available`,
     },
   },
 
@@ -204,6 +231,15 @@ const GPU_SCENARIOS = {
       ],
       reportMsg:"<strong>GPU-003 filed.</strong> P2-High straggler on node 12. Job checkpointed. Replacement provisioning. <span style='color:#34D399;font-weight:700'>Net savings: $5,400</span> vs. running degraded.<br><span style='color:#A78BFA;font-size:10px'>Tools: gpu_telemetry · dcgm_metrics · gpu_insights · job_manager · cluster_manager</span>",
       healMsg:"<span style='color:#34D399;font-weight:700'>✓ Job resumed.</span> Node 47 joined cluster. All 64 nodes within 4% of P50. Throughput fully restored.",
+      blastRadius:`<strong>1/64 straggler</strong> creates whole-cluster sync barrier · 63 healthy nodes idle-waiting +270ms/step · Job extension: <span style="color:#F87171;font-weight:600">+3.8h · $6,100 at risk</span> · 2 downstream jobs scheduled after this job complete — both delayed by same margin`,
+      evidenceChain:[
+        {weight:38,label:"Step lag persistent",      detail:"22% above median across 340 steps · CV 2.3% — not noise"},
+        {weight:30,label:"CPU bottleneck confirmed", detail:"Node-12 CPU 98% vs cluster median 34% · I/O wait 41%"},
+        {weight:13,label:"GPU not at fault",         detail:"GPU util 67% — starved for data · no ECC errors · thermal nominal"},
+        {weight: 8,label:"Barrier wait correlates",  detail:"+270ms avg barrier wait matches exactly node-12 step lag"},
+      ],
+      evidenceConfidence:89,
+      rollbackAvailable:`Checkpoint at step 8,921 verified · <span style="color:#34D399">✓ Integrity check passed</span> · Node 47 (warm pool) pre-validated and ready · Fallback: step 8,500 checkpoint also available`,
     },
   },
 };
@@ -222,6 +258,11 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 function mColor(k,v){if(k==="latency")return v>200?"#F87171":v>50?"#FBBF24":"#34D399";if(k==="packetLoss")return v>10?"#F87171":v>2?"#FBBF24":"#34D399";if(k==="bandwidth")return v>90?"#F87171":v>70?"#FBBF24":"#34D399";if(k==="cpu"||k==="mem")return v>85?"#F87171":v>65?"#FBBF24":"#34D399";return"#475569";}
 function gpuMColor(k,v){if(k==="gpuTemp")return v>85?"#F87171":v>80?"#FBBF24":"#34D399";if(k==="throughput"||k==="clockSpeed")return v<70?"#F87171":v<90?"#FBBF24":"#34D399";if(k==="powerDraw")return v>95?"#F87171":v>85?"#FBBF24":"#34D399";if(k==="affected")return v>0?"#F87171":"#34D399";if(k==="gpuUtil")return v<10?"#F87171":v<40?"#FBBF24":"#34D399";if(k==="idleTime")return v>30?"#F87171":v>10?"#FBBF24":"#34D399";if(k==="cost")return v>0?"#F87171":"#34D399";if(k==="jobs")return v===0?"#F87171":"#34D399";if(k==="stepLag")return v>15?"#F87171":v>5?"#FBBF24":"#34D399";if(k==="duration")return v>30?"#F87171":v>10?"#FBBF24":"#34D399";if(k==="jobEta")return v>3?"#F87171":v>1?"#FBBF24":"#34D399";if(k==="costRisk")return v>4000?"#F87171":v>1000?"#FBBF24":"#34D399";return"#94A3B8";}
 function fmt$(n){return n>=1000?"$"+Math.round(n/1000)+"k":"$"+n;}
+function evidenceChainHtml(items,pct){
+  const maxW=Math.max(...items.map(e=>e.weight));
+  const bars=items.map(e=>`<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><span style="font-size:9px;font-weight:700;color:#34D399;min-width:28px;text-align:right;font-family:'JetBrains Mono',monospace">+${e.weight}%</span><div style="width:100px;flex-shrink:0;height:3px;background:rgba(148,163,184,0.15);border-radius:2px;overflow:hidden"><div style="width:${Math.round(e.weight/maxW*90)}%;height:100%;background:#34D399;border-radius:2px"></div></div><div><span style="font-size:9px;font-weight:600;color:#94A3B8">${e.label}</span><span style="font-size:9px;color:#475569;margin-left:5px">${e.detail}</span></div></div>`).join('');
+  return `<div><div style="font-size:8px;color:#A78BFA;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:7px">Evidence weights</div>${bars}<div style="margin-top:7px;padding-top:6px;border-top:1px solid rgba(148,163,184,0.12);display:flex;align-items:center;gap:8px"><span style="font-size:9px;color:#64748B">Aggregate confidence:</span><span style="font-size:14px;font-weight:700;color:#34D399;font-family:'JetBrains Mono',monospace">${pct}%</span><div style="flex:1;height:3px;background:rgba(148,163,184,0.15);border-radius:2px;overflow:hidden"><div style="width:${pct}%;height:100%;background:linear-gradient(90deg,#34D399,#38BDF8);border-radius:2px"></div></div></div></div>`;
+}
 
 // ── Shared components ────────────────────────────────────────────────────────
 function Spinner(){return <span style={{width:10,height:10,border:"1.5px solid rgba(56,189,248,0.2)",borderTopColor:"#38BDF8",borderRadius:"50%",display:"inline-block",animation:"spin 0.7s linear infinite",flexShrink:0}}/>;}
@@ -450,15 +491,21 @@ function LiveIncidentPanel({T,theme}){
     await sleep(500);
     addLog("diagnostic",`monitoring_api: get_device_history("${inc.deviceId}")`,`Gi1/0/3 down at 03:14 UTC — correlates with INC-2041 BGP failure.`);
     await sleep(400);
+    addLog("diagnostic",`blast_radius_api: analyze_impact("${inc.deviceId}")`,s.blastRadius);
+    await sleep(500);
     setStatusMsg("Diagnostic reasoning…");
     await typeText(s.diagReasoning);
     await sleep(200);
-    addLog("diagnostic","monitoring_api: submit_diagnosis()",`<strong>Root cause:</strong> Downstream STP reconvergence from INC-2041 BGP failure.<br/><strong>Confidence:</strong> high. No hardware fault. Recovery expected post-INC-2041 resolution.`);
+    addLog("diagnostic",`evidence_engine: build_confidence_chain("${inc.id}")`,evidenceChainHtml(s.evidenceChain,95));
+    await sleep(500);
+    addLog("diagnostic","monitoring_api: submit_diagnosis()",`<strong>Root cause:</strong> Downstream STP reconvergence from INC-2041 BGP failure.<br/><strong>Confidence:</strong> 95%. No hardware fault. Recovery expected post-INC-2041 resolution.`);
     await sleep(400);
-    addLog("orchestrator",null,"Diagnosis confirmed (high confidence). Guardrail satisfied. Routing to Response agent.");
+    addLog("orchestrator",null,"Diagnosis confirmed (95% confidence). Guardrail satisfied. Routing to Response agent.");
     await sleep(500);
     setStatusMsg("Response applying actions…");
     addLog("response","monitoring_api: get_diagnosis()","Diagnosis retrieved. Guardrail check: PASSED.");
+    await sleep(400);
+    addLog("response",`rollback_api: verify_restore_point("${inc.deviceId}")`,s.rollbackAvailable);
     await sleep(400);
     addLog("response",`telemetry_api: apply_remediation("${inc.deviceId}")`,s.autoAct);
     await sleep(500);
@@ -477,7 +524,7 @@ function LiveIncidentPanel({T,theme}){
     setPhase("healed");
   }
 
-  const pStep=phase==="idle"?-1:phase==="healed"||phase==="done"?4:logs.length<5?1:logs.length<9?2:3;
+  const pStep=phase==="idle"?-1:phase==="healed"||phase==="done"?4:logs.length<7?1:logs.length<15?2:3;
   const netDevices=DEVICES.filter(d=>d.network===topoNet).map(d=>d.id===inc.deviceId&&healed?{...d,status:"ok"}:d);
 
   return(
@@ -657,30 +704,28 @@ function GpuInsightsPanel({scenarioKey,T,theme}){
     addLog("orchestrator",null,"Signal validated. Guardrail check passed. Routing to Root Cause Agent.");
     await sleep(500);
 
-    // Diagnostic phase — tool calls → reasoning → submit_diagnosis
+    // Diagnostic phase — tool calls → blast radius → reasoning → evidence chain → submit_diagnosis
     setStatusMsg("Root Cause Agent investigating…");
-    addLog("diagnostic",s.diagTools[0][0],s.diagTools[0][1]);
-    await sleep(600);
-    addLog("diagnostic",s.diagTools[1][0],s.diagTools[1][1]);
+    for(let i=0;i<s.diagTools.length;i++){addLog("diagnostic",s.diagTools[i][0],s.diagTools[i][1]);await sleep(i===0?600:500);}
+    addLog("diagnostic",`blast_radius_api: analyze_impact("${scenario.id}")`,s.blastRadius);
     await sleep(500);
-    addLog("diagnostic",s.diagTools[2][0],s.diagTools[2][1]);
-    await sleep(400);
     setStatusMsg("Root Cause Agent reasoning…");
     await typeText(s.diagReasoning);
     await sleep(200);
+    addLog("diagnostic",`evidence_engine: build_confidence_chain("${scenario.id}")`,evidenceChainHtml(s.evidenceChain,s.evidenceConfidence));
+    await sleep(500);
     addLog("diagnostic","gpu_insights: submit_diagnosis()",s.diagFlag);
     await sleep(400);
-    addLog("orchestrator",null,"Diagnosis confirmed. Guardrail satisfied. Routing to Action Agent.");
+    addLog("orchestrator",null,`Diagnosis confirmed (${s.evidenceConfidence}% confidence). Guardrail satisfied. Routing to Action Agent.`);
     await sleep(500);
 
-    // Response phase — get_diagnosis guardrail check (mirrors NetOps) → tools → autoAct → reasoning → report
+    // Response phase — guardrail check → rollback verification → tools → autoAct → reasoning → report
     setStatusMsg("Action Agent executing…");
     addLog("response","gpu_insights: get_diagnosis()","Diagnosis retrieved. Guardrail check: PASSED.");
     await sleep(400);
-    addLog("response",s.respTools[0][0],s.respTools[0][1]);
-    await sleep(500);
-    addLog("response",s.respTools[1][0],s.respTools[1][1]);
-    await sleep(500);
+    addLog("response",`rollback_api: verify_restore_point("${scenario.id}")`,s.rollbackAvailable);
+    await sleep(400);
+    for(let i=0;i<s.respTools.length;i++){addLog("response",s.respTools[i][0],s.respTools[i][1]);await sleep(500);}
 
     // Tiered approval gate: high-risk actions require NOC sign-off; low-risk auto-execute
     if(scenario.requiresApproval){
@@ -712,7 +757,7 @@ function GpuInsightsPanel({scenarioKey,T,theme}){
     setPhase("healed");
   }
 
-  const pStep=phase==="idle"?-1:phase==="healed"||phase==="done"?4:phase==="awaiting-approval"?3:logs.length<5?1:logs.length<9?2:3;
+  const pStep=phase==="idle"?-1:phase==="healed"||phase==="done"?4:phase==="awaiting-approval"?3:logs.length<7?1:logs.length<15?2:3;
   const sc=SEV_COLOR[scenario.severity]||"#FBBF24";
   const sbg=scenario.severity==="P1-Critical"?"rgba(248,113,113,0.06)":"rgba(251,191,36,0.06)";
   const sbd=scenario.severity==="P1-Critical"?"rgba(248,113,113,0.25)":"rgba(251,191,36,0.25)";
