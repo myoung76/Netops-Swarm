@@ -587,46 +587,47 @@ function LiveIncidentPanel({T,theme}){
         </div>
       )}
 
-      {logs.length>0&&(
-        <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:8,overflow:"hidden"}}>
-          <div style={{padding:"8px 12px",borderBottom:`1px solid ${T.border}`,display:"flex",alignItems:"center"}}>
-            <span style={{fontSize:9,fontWeight:700,color:T.textDim,letterSpacing:"0.1em",textTransform:"uppercase"}}>Agent Execution Log — INC-2048</span>
-            <span style={{fontSize:9,color:T.textDim,marginLeft:"auto"}}>{logs.length} events</span>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,alignItems:"start"}}>
+        {logs.length>0&&(
+          <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:8,overflow:"hidden"}}>
+            <div style={{padding:"8px 12px",borderBottom:`1px solid ${T.border}`,display:"flex",alignItems:"center"}}>
+              <span style={{fontSize:9,fontWeight:700,color:T.textDim,letterSpacing:"0.1em",textTransform:"uppercase"}}>Agent Execution Log — INC-2048</span>
+              <span style={{fontSize:9,color:T.textDim,marginLeft:"auto"}}>{logs.length} events</span>
+            </div>
+            <div ref={logScrollRef} style={{padding:"8px 12px",maxHeight:400,overflowY:"auto"}}>
+              {logs.map((log,i)=>{
+                const c=AC[log.agent]?.accent||"#94A3B8";
+                return<div key={i} style={{padding:"7px 0",borderBottom:i<logs.length-1?`1px solid ${T.border}`:"none",animation:"fadeUp 0.2s ease"}}>
+                  <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:3,flexWrap:"wrap"}}>
+                    <Badge agent={log.agent}/>
+                    {log.tool&&<span style={{fontSize:8,fontFamily:"monospace",color:T.textDim,background:T.inset,padding:"1px 6px",borderRadius:3,maxWidth:"100%",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{log.tool}</span>}
+                    <span style={{fontSize:9,color:T.textDim,marginLeft:"auto"}}>{log.time}</span>
+                  </div>
+                  <div style={{fontSize:11,color:T.textMid,lineHeight:1.65}} dangerouslySetInnerHTML={{__html:log.html}}/>
+                </div>;
+              })}
+            </div>
           </div>
-          <div ref={logScrollRef} style={{padding:"8px 12px",maxHeight:320,overflowY:"auto"}}>
-            {logs.map((log,i)=>{
-              const c=AC[log.agent]?.accent||"#94A3B8";
-              return<div key={i} style={{padding:"7px 0",borderBottom:i<logs.length-1?`1px solid ${T.border}`:"none",animation:"fadeUp 0.2s ease"}}>
-                <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:3,flexWrap:"wrap"}}>
-                  <Badge agent={log.agent}/>
-                  {log.tool&&<span style={{fontSize:8,fontFamily:"monospace",color:T.textDim,background:T.inset,padding:"1px 6px",borderRadius:3,maxWidth:"100%",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{log.tool}</span>}
-                  <span style={{fontSize:9,color:T.textDim,marginLeft:"auto"}}>{log.time}</span>
+        )}
+        <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:10,overflow:"hidden",gridColumn:logs.length>0?"auto":"span 2"}}>
+          <div style={{padding:"10px 14px",borderBottom:`1px solid ${T.border}`,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+            <div><div style={{fontSize:11,fontWeight:600,color:T.textHi}}>Network Topology</div><div style={{fontSize:9,color:T.textDim,marginTop:1}}>Active incident highlighted · updates on remediation</div></div>
+            <div style={{display:"flex",gap:1,background:T.inset,borderRadius:5,border:`1px solid ${T.border}`,overflow:"hidden"}}>
+              {["hq","sea","dmz"].map(n=>(
+                <button key={n} onClick={()=>setTopoNet(n)} style={{padding:"4px 10px",fontSize:9,fontWeight:700,letterSpacing:"0.06em",textTransform:"uppercase",border:"none",background:topoNet===n?NET_ACCENT[n]+"22":"transparent",color:topoNet===n?NET_ACCENT[n]:T.textDim,cursor:"pointer",transition:"all 0.15s"}}>{n.toUpperCase()}</button>
+              ))}
+            </div>
+          </div>
+          <div style={{padding:"10px",overflowX:"auto"}}>
+            <TopologyMap networkId={topoNet} devices={netDevices} activeDeviceId={topoNet==="hq"?inc.deviceId:null} T={T} theme={theme}/>
+            <div style={{display:"flex",gap:12,marginTop:6,flexWrap:"wrap"}}>
+              {[["#F87171","Critical"],["#FBBF24","Warning / Active"],["#34D399","Healthy / Resolved"]].map(([c,l])=>(
+                <div key={l} style={{display:"flex",alignItems:"center",gap:4}}>
+                  <span style={{width:7,height:7,borderRadius:"50%",background:c,display:"inline-block"}}/>
+                  <span style={{fontSize:8,color:T.textDim}}>{l}</span>
                 </div>
-                <div style={{fontSize:11,color:T.textMid,lineHeight:1.65}} dangerouslySetInnerHTML={{__html:log.html}}/>
-              </div>;
-            })}
-          </div>
-        </div>
-      )}
-
-      <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:10,overflow:"hidden"}}>
-        <div style={{padding:"10px 14px",borderBottom:`1px solid ${T.border}`,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-          <div><div style={{fontSize:11,fontWeight:600,color:T.textHi}}>Network Topology</div><div style={{fontSize:9,color:T.textDim,marginTop:1}}>Active incident highlighted · updates on remediation</div></div>
-          <div style={{display:"flex",gap:1,background:T.inset,borderRadius:5,border:`1px solid ${T.border}`,overflow:"hidden"}}>
-            {["hq","sea","dmz"].map(n=>(
-              <button key={n} onClick={()=>setTopoNet(n)} style={{padding:"4px 10px",fontSize:9,fontWeight:700,letterSpacing:"0.06em",textTransform:"uppercase",border:"none",background:topoNet===n?NET_ACCENT[n]+"22":"transparent",color:topoNet===n?NET_ACCENT[n]:T.textDim,cursor:"pointer",transition:"all 0.15s"}}>{n.toUpperCase()}</button>
-            ))}
-          </div>
-        </div>
-        <div style={{padding:"10px",overflowX:"auto"}}>
-          <TopologyMap networkId={topoNet} devices={netDevices} activeDeviceId={topoNet==="hq"?inc.deviceId:null} T={T} theme={theme}/>
-          <div style={{display:"flex",gap:12,marginTop:6,flexWrap:"wrap"}}>
-            {[["#F87171","Critical"],["#FBBF24","Warning / Active"],["#34D399","Healthy / Resolved"]].map(([c,l])=>(
-              <div key={l} style={{display:"flex",alignItems:"center",gap:4}}>
-                <span style={{width:7,height:7,borderRadius:"50%",background:c,display:"inline-block"}}/>
-                <span style={{fontSize:8,color:T.textDim}}>{l}</span>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </div>
       </div>
@@ -869,46 +870,46 @@ function GpuInsightsPanel({scenarioKey,T,theme}){
         </div>
       )}
 
-      {/* Execution log */}
-      {logs.length>0&&(
-        <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:8,overflow:"hidden"}}>
-          <div style={{padding:"8px 12px",borderBottom:`1px solid ${T.border}`,display:"flex",alignItems:"center"}}>
-            <span style={{fontSize:9,fontWeight:700,color:T.textDim,letterSpacing:"0.1em",textTransform:"uppercase"}}>Agent Execution Log — {scenario.id}</span>
-            <span style={{fontSize:9,color:T.textDim,marginLeft:"auto"}}>{logs.length} events</span>
-          </div>
-          <div ref={logScrollRef} style={{padding:"8px 12px",maxHeight:320,overflowY:"auto"}}>
-            {logs.map((log,i)=>(
-              <div key={i} style={{padding:"7px 0",borderBottom:i<logs.length-1?`1px solid ${T.border}`:"none",animation:"fadeUp 0.2s ease"}}>
-                <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:3,flexWrap:"wrap"}}>
-                  <GpuBadge agent={log.agent}/>
-                  {log.tool&&<span style={{fontSize:8,fontFamily:"monospace",color:T.textDim,background:T.inset,padding:"1px 6px",borderRadius:3,maxWidth:"100%",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{log.tool}</span>}
-                  <span style={{fontSize:9,color:T.textDim,marginLeft:"auto"}}>{log.time}</span>
+      {/* Execution log + Cluster map side-by-side */}
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,alignItems:"start"}}>
+        {logs.length>0&&(
+          <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:8,overflow:"hidden"}}>
+            <div style={{padding:"8px 12px",borderBottom:`1px solid ${T.border}`,display:"flex",alignItems:"center"}}>
+              <span style={{fontSize:9,fontWeight:700,color:T.textDim,letterSpacing:"0.1em",textTransform:"uppercase"}}>Agent Execution Log — {scenario.id}</span>
+              <span style={{fontSize:9,color:T.textDim,marginLeft:"auto"}}>{logs.length} events</span>
+            </div>
+            <div ref={logScrollRef} style={{padding:"8px 12px",maxHeight:400,overflowY:"auto"}}>
+              {logs.map((log,i)=>(
+                <div key={i} style={{padding:"7px 0",borderBottom:i<logs.length-1?`1px solid ${T.border}`:"none",animation:"fadeUp 0.2s ease"}}>
+                  <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:3,flexWrap:"wrap"}}>
+                    <GpuBadge agent={log.agent}/>
+                    {log.tool&&<span style={{fontSize:8,fontFamily:"monospace",color:T.textDim,background:T.inset,padding:"1px 6px",borderRadius:3,maxWidth:"100%",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{log.tool}</span>}
+                    <span style={{fontSize:9,color:T.textDim,marginLeft:"auto"}}>{log.time}</span>
+                  </div>
+                  <div style={{fontSize:11,color:T.textMid,lineHeight:1.65}} dangerouslySetInnerHTML={{__html:log.html}}/>
                 </div>
-                <div style={{fontSize:11,color:T.textMid,lineHeight:1.65}} dangerouslySetInnerHTML={{__html:log.html}}/>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
-      )}
-
-      {/* Cluster map */}
-      <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:10,overflow:"hidden"}}>
-        <div style={{padding:"10px 14px",borderBottom:`1px solid ${T.border}`,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-          <div>
-            <div style={{fontSize:11,fontWeight:600,color:T.textHi}}>Cluster Topology</div>
-            <div style={{fontSize:9,color:T.textDim,marginTop:1}}>{scenario.affectedNodes.length} of {scenario.totalNodes} nodes affected · updates on remediation</div>
+        )}
+        <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:10,overflow:"hidden",gridColumn:logs.length>0?"auto":"span 2"}}>
+          <div style={{padding:"10px 14px",borderBottom:`1px solid ${T.border}`,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+            <div>
+              <div style={{fontSize:11,fontWeight:600,color:T.textHi}}>Cluster Topology</div>
+              <div style={{fontSize:9,color:T.textDim,marginTop:1}}>{scenario.affectedNodes.length} of {scenario.totalNodes} nodes affected · updates on remediation</div>
+            </div>
+            <div style={{display:"flex",gap:12}}>
+              {[["#F87171","Affected"],["#34D399","Healthy"]].map(([c,l])=>(
+                <div key={l} style={{display:"flex",alignItems:"center",gap:4}}>
+                  <span style={{width:7,height:7,borderRadius:"50%",background:c,display:"inline-block"}}/>
+                  <span style={{fontSize:8,color:T.textDim}}>{l}</span>
+                </div>
+              ))}
+            </div>
           </div>
-          <div style={{display:"flex",gap:12}}>
-            {[["#F87171","Affected"],["#34D399","Healthy"]].map(([c,l])=>(
-              <div key={l} style={{display:"flex",alignItems:"center",gap:4}}>
-                <span style={{width:7,height:7,borderRadius:"50%",background:c,display:"inline-block"}}/>
-                <span style={{fontSize:8,color:T.textDim}}>{l}</span>
-              </div>
-            ))}
+          <div style={{padding:"10px",overflowX:"auto"}}>
+            <ClusterMap totalNodes={scenario.totalNodes} affectedNodes={scenario.affectedNodes} healed={healed} T={T} theme={theme}/>
           </div>
-        </div>
-        <div style={{padding:"10px",overflowX:"auto"}}>
-          <ClusterMap totalNodes={scenario.totalNodes} affectedNodes={scenario.affectedNodes} healed={healed} T={T} theme={theme}/>
         </div>
       </div>
     </div>
@@ -1000,7 +1001,7 @@ export default function App(){
 
       <div style={{padding:"16px 20px",maxWidth:1000,margin:"0 auto"}}>
         <KPIStrip T={T}/>
-        <div style={{display:"grid",gridTemplateColumns:"320px 1fr",gap:12,alignItems:"start"}}>
+        <div style={{display:"grid",gridTemplateColumns:"220px 1fr",gap:12,alignItems:"start"}}>
           {/* Queue — sticky so it stays visible while detail scrolls */}
           <div style={{position:"sticky",top:64,maxHeight:"calc(100vh - 80px)",overflowY:"auto"}}>
             <IncidentQueue incidents={filtered} selectedId={selectedId} onSelect={handleSelect} approvedIds={approvedIds} T={T}/>
